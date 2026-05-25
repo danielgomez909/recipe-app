@@ -245,8 +245,10 @@ function renderRecipeList(){
   c.innerHTML=list.map(r=>`<div class="recipe-card" onclick="viewRecipe('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}${r.serves?' &middot; Serves '+esc(r.serves):''}</div></div>`).join('');
 }
 
-function renderIngredientList(){
+async function renderIngredientList(){
   const c=document.getElementById('content');
+  // refresh from DB to catch newly added ingredients
+  S.ingredients=await db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)');
   let list=S.ingredients;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(i=>i.name.toLowerCase().includes(q)); }
   if(!list.length){ c.innerHTML='<div class="empty"><h3>No ingredients yet</h3><p>Add ingredients to your master list.</p></div>'; return; }
@@ -414,12 +416,14 @@ function renderRecipeModal(editId){
 }
 
 function ingRowHtml(ing,i){
-  return `<div class="ing-build-row" id="ir-${i}">
-    <div class="ing-search-wrap">
-      <input class="ing-search-input" id="is-${i}" placeholder="Search ingredient..." value="${esc(ing.ingName)}" oninput="handleIngSearch(${i},this.value)" onfocus="showIngDrop(${i})" autocomplete="off">
+  const linked=!!ing.ingId;
+  const rowBg=linked?'':'background:#fff8f5;';
+  return `<div class="ing-build-row" id="ir-${i}" style="${rowBg}">
+    <div class="ing-search-wrap" style="position:relative">
+      <input class="ing-search-input" id="is-${i}" placeholder="${linked?'':'⚠ search & select...'}" value="${esc(ing.ingName)}" oninput="handleIngSearch(${i},this.value)" onfocus="showIngDrop(${i})" autocomplete="off" style="${!linked&&ing.ingName?'color:#c0622a;':''}" title="${linked?'':'Must select from list'}">
       <div class="ing-dropdown" id="id-${i}" style="display:none"></div>
     </div>
-    <input type="number" step="any" placeholder="qty" value="${esc(ing.qty)}" oninput="FM.ings[${i}].qty=this.value" style="border-right:1px solid var(--border)">
+    <input type="text" inputmode="decimal" placeholder="e.g. 1/2" value="${esc(ing.qty)}" oninput="FM.ings[${i}].qty=this.value" style="border-right:1px solid var(--border)">
     <select onchange="FM.ings[${i}].unitId=this.value" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
     <button class="del-btn" onclick="removeIngRow(${i})">&#10005;</button>
   </div>`;
@@ -429,7 +433,19 @@ function stepRowHtml(s,i){
   return `<div class="step-build-row"><div class="step-build-num">${i+1}</div><textarea rows="2" placeholder="Describe step ${i+1}..." oninput="FM.steps[${i}]=this.value">${esc(s)}</textarea><button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button></div>`;
 }
 
-function buildUnitOpts(selId){
+function parseFraction(s){
+  if(!s||!String(s).trim())return null;
+  s=String(s).trim();
+  // decimal
+  if(!isNaN(s))return Math.max(0,Number(s));
+  // whole + fraction e.g. "1 1/2"
+  const mixed=s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if(mixed)return Math.max(0,parseInt(mixed[1])+parseInt(mixed[2])/parseInt(mixed[3]));
+  // fraction e.g. "1/2"
+  const frac=s.match(/^(\d+)\/(\d+)$/);
+  if(frac)return Math.max(0,parseInt(frac[1])/parseInt(frac[2]));
+  return null;
+}
   const grps={'Volume – English':[],'Volume – Metric':[],'Weight – English':[],'Weight – Metric':[]};
   for(const u of S.units){
     const k=`${u.type==='volume'?'Volume':'Weight'} – ${u.system==='english'?'English':'Metric'}`;
@@ -448,28 +464,26 @@ function attachIngDropdowns(){
     const input=document.getElementById(`is-${i}`);
     const drop=document.getElementById(`id-${i}`);
     if(!input||!drop)return;
-    document.addEventListener('click', function handler(e){
-      if(!input.contains(e.target)&&!drop.contains(e.target)){ drop.style.display='none'; document.removeEventListener('click',handler); }
-    });
+    input.onblur=()=>setTimeout(()=>{ drop.style.display='none'; },150);
   });
 }
 
 function handleIngSearch(i, val){
   FM.ings[i].ingName=val;
-  if(!val){ document.getElementById(`id-${i}`).style.display='none'; return; }
+  FM.ings[i].ingId=''; // clear link when user types
   showIngDrop(i);
 }
 
 function showIngDrop(i){
   const drop=document.getElementById(`id-${i}`);
   if(!drop)return;
-  const q=(FM.ings[i].ingName||'').toLowerCase();
-  const filtered=q?S.ingredients.filter(x=>x.name.toLowerCase().includes(q)):S.ingredients.slice(0,12);
+  const q=(FM.ings[i].ingName||'').toLowerCase().trim();
+  const filtered=q ? S.ingredients.filter(x=>x.name.toLowerCase().includes(q)) : S.ingredients.slice(0,15);
+  const createLabel=FM.ings[i].ingName.trim();
   drop.innerHTML=[
-    ...filtered.map(x=>`<div class="ing-dropdown-item" onclick="selectIng(${i},'${x.id}','${esc(x.name)}')">${esc(x.name)}</div>`),
-    `<div class="ing-dropdown-item create" onclick="quickCreateIng(${i})">+ Create "${esc(FM.ings[i].ingName||'new')}"</div>`
+    ...filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault()" onclick="selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}')">${esc(x.name)}</div>`),
+    createLabel?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault()" onclick="quickCreateIng(${i})">+ Create &ldquo;${esc(createLabel)}&rdquo;</div>`:''
   ].join('');
-  drop.style.display=filtered.length||FM.ings[i].ingName?'':'none';
   drop.style.display='block';
 }
 
@@ -484,16 +498,33 @@ function selectIng(i,id,name){
 async function quickCreateIng(i){
   const name=FM.ings[i].ingName.trim();
   if(!name)return;
+  // prompt for type
+  const typeOptions=S.types.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  const typeId = await new Promise(resolve=>{
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;inset:0;background:rgba(61,43,31,0.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+    d.innerHTML=`<div style="background:var(--cream);border-radius:12px;padding:20px;width:100%;max-width:320px">
+      <div style="font-family:Lora,serif;font-size:16px;font-weight:600;margin-bottom:12px">Create "${esc(name)}"</div>
+      <div style="font-size:12px;color:var(--brown-light);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Type</div>
+      <select id="qc-type" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border-strong);border-radius:8px;background:white;color:var(--brown);margin-bottom:14px">
+        <option value="">— select type —</option>${typeOptions}
+      </select>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="this.closest('div[style*=fixed]').remove();window._qcResolve(null)" style="padding:7px 14px;border:1px solid var(--border-strong);border-radius:8px;background:var(--cream);cursor:pointer;font-family:DM Sans,sans-serif">Cancel</button>
+        <button onclick="window._qcResolve(document.getElementById('qc-type').value);this.closest('div[style*=fixed]').remove()" style="padding:7px 14px;background:#c0622a;color:white;border:none;border-radius:8px;cursor:pointer;font-family:DM Sans,sans-serif">Create</button>
+      </div>
+    </div>`;
+    window._qcResolve=resolve;
+    document.body.appendChild(d);
+  });
+  if(typeId===null)return;
   try{
-    const[created]=await db.post('ingredient_master',{name,type_id:null});
+    const[created]=await db.post('ingredient_master',{name,type_id:typeId||null});
     S.ingredients.push(created); S.ingredients.sort((a,b)=>a.name.localeCompare(b.name));
     FM.ings[i].ingId=created.id; FM.ings[i].ingName=created.name;
     toast(`"${name}" created`);
-    const input=document.getElementById(`is-${i}`);
-    const drop=document.getElementById(`id-${i}`);
-    if(input)input.value=name;
-    if(drop)drop.style.display='none';
-  }catch(e){ toast('Error creating ingredient'); }
+    rerenderIngList();
+  }catch(e){ toast('Error — may already exist'); }
 }
 
 function addIngRow(){ FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
@@ -551,7 +582,12 @@ async function saveRecipe(editId){
     const validSteps=FM.steps.map((s,i)=>s.trim()).filter(Boolean).map((inst,i)=>({recipe_id:recipeId,step_number:i+1,instruction:inst}));
     if(validSteps.length) await db.post('recipe_steps',validSteps);
     if(editId) await db.del(`recipe_ingredients?recipe_id=eq.${editId}`);
-    const validIngs=FM.ings.filter(i=>i.ingId).map(i=>({recipe_id:recipeId,ingredient_id:i.ingId,quantity:i.qty!==''?Number(i.qty):null,unit_id:i.unitId||null,or_group:i.orGroup!==''?Number(i.orGroup):null}));
+    const unlinked=FM.ings.filter(i=>i.ingName.trim()&&!i.ingId);
+    if(unlinked.length){
+      toast(`⚠ ${unlinked.length} ingredient(s) not linked — search and select from list`);
+      return;
+    }
+    const validIngs=FM.ings.filter(i=>i.ingId).map(i=>({recipe_id:recipeId,ingredient_id:i.ingId,quantity:parseFraction(i.qty),unit_id:i.unitId||null,or_group:i.orGroup!==''?Number(i.orGroup):null}));
     if(validIngs.length) await db.post('recipe_ingredients',validIngs);
     S.recipes=await db.get('recipes?order=name&select=id,name,source,notes,serves,created_at');
     if(editId){ S.viewingRecipe=S.recipes.find(r=>r.id===editId); }
