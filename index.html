@@ -442,83 +442,42 @@ function ingRowHtml(ing,i){
   const hasUnlinkedText=!linked&&!!ing.ingName.trim();
   return `<div class="ing-build-row" id="ir-${i}" style="${hasUnlinkedText?'background:#fff8f5;':''}">
     <div class="ing-search-wrap" style="position:relative">
-      <input class="ing-search-input" id="is-${i}"
-        placeholder="type to search..."
-        value="${esc(ing.ingName)}"
-        oninput="handleIngSearch(${i},this.value)"
-        onfocus="showIngDrop(${i})"
-        autocomplete="off"
-        style="${linked?'color:var(--green);font-weight:500;':hasUnlinkedText?'color:#c0622a;':''}">
+      <input class="ing-search-input" id="is-${i}" placeholder="type to search..." value="${esc(ing.ingName)}" autocomplete="off" style="${linked?'color:var(--green);font-weight:500;':hasUnlinkedText?'color:#c0622a;':''}">
       ${linked?`<div style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:var(--green);font-size:12px;pointer-events:none">✓</div>`:''}
       <div class="ing-dropdown" id="id-${i}" style="display:none"></div>
     </div>
-    <input type="text" inputmode="decimal" placeholder="e.g. 1/2" value="${esc(ing.qty)}" oninput="FM.ings[${i}].qty=this.value" style="border-right:1px solid var(--border)">
-    <select onchange="FM.ings[${i}].unitId=this.value" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
+    <input type="text" inputmode="decimal" placeholder="e.g. 1/2" value="${esc(ing.qty)}" id="iq-${i}" style="border-right:1px solid var(--border)">
+    <select id="iu-${i}" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
     <button class="del-btn" onclick="removeIngRow(${i})">&#10005;</button>
   </div>`;
-}
-
-function stepRowHtml(s,i){
-  return `<div class="step-build-row"><div class="step-build-num">${i+1}</div><textarea rows="2" placeholder="Describe step ${i+1}..." oninput="FM.steps[${i}]=this.value">${esc(s)}</textarea><button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button></div>`;
-}
-
-function parseFraction(s){
-  if(!s||!String(s).trim())return null;
-  s=String(s).trim();
-  // decimal
-  if(!isNaN(s))return Math.max(0,Number(s));
-  // whole + fraction e.g. "1 1/2"
-  const mixed=s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
-  if(mixed)return Math.max(0,parseInt(mixed[1])+parseInt(mixed[2])/parseInt(mixed[3]));
-  // fraction e.g. "1/2"
-  const frac=s.match(/^(\d+)\/(\d+)$/);
-  if(frac)return Math.max(0,parseInt(frac[1])/parseInt(frac[2]));
-  return null;
-}
-
-function buildUnitOpts(selId){
-  const grps={'Volume – English':[],'Volume – Metric':[],'Weight – English':[],'Weight – Metric':[]};
-  for(const u of S.units){
-    const k=`${u.type==='volume'?'Volume':'Weight'} – ${u.system==='english'?'English':'Metric'}`;
-    if(grps[k])grps[k].push(u);
-  }
-  let o=`<option value="">count</option>`;
-  for(const[g,us]of Object.entries(grps)){
-    if(!us.length)continue;
-    o+=`<optgroup label="${g}">${us.map(u=>`<option value="${u.id}"${u.id==selId?' selected':''}>${u.name} (${u.abbreviation})</option>`).join('')}</optgroup>`;
-  }
-  return o;
 }
 
 function attachIngDropdowns(){
   FM.ings.forEach((_,i)=>{
     const input=document.getElementById(`is-${i}`);
     const drop=document.getElementById(`id-${i}`);
+    const qtyInput=document.getElementById(`iq-${i}`);
+    const unitSel=document.getElementById(`iu-${i}`);
     if(!input||!drop)return;
-    input.onblur=()=>setTimeout(()=>{ drop.style.display='none'; },300);
+    if(qtyInput) qtyInput.addEventListener('input',()=>{ FM.ings[i].qty=qtyInput.value; });
+    if(unitSel) unitSel.addEventListener('change',()=>{ FM.ings[i].unitId=unitSel.value; });
+    input.addEventListener('focus',()=>buildIngDrop(i,input.value));
+    input.addEventListener('input',()=>{ FM.ings[i].ingName=input.value; FM.ings[i].ingId=''; buildIngDrop(i,input.value); });
+    input.addEventListener('blur',()=>setTimeout(()=>{ drop.style.display='none'; },300));
   });
-}
-
-function handleIngSearch(i, val){
-  FM.ings[i].ingName=val;
-  FM.ings[i].ingId='';
-  buildIngDrop(i, val);
-}
-
-function showIngDrop(i){
-  buildIngDrop(i, FM.ings[i].ingName||'');
 }
 
 function buildIngDrop(i, val){
   const drop=document.getElementById(`id-${i}`);
   if(!drop)return;
   const q=val.toLowerCase().trim();
-  const filtered=q ? S.ingredients.filter(x=>x.name.toLowerCase().includes(q)) : S.ingredients.slice(0,15);
-  // always show create option if there's text, even if matches exist
-  const createItem=val.trim()?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault();quickCreateIng(${i})">+ Create &ldquo;${esc(val.trim())}&rdquo; as new ingredient</div>`:'';
-  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}')">${esc(x.name)}</div>`).join('')+createItem;
+  const filtered=S.ingredients.filter(x=>x.name.toLowerCase().trim().includes(q));
+  const show=q?filtered:S.ingredients.slice(0,15);
+  const createItem=val.trim()?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault();quickCreateIng(${i})">+ Create “${esc(val.trim())}” as new ingredient</div>`:'';
+  drop.innerHTML=show.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\'")}')">${esc(x.name)}</div>`).join('')+createItem;
   drop.style.display='block';
 }
+
 
 function selectIng(i,id,name){
   FM.ings[i].ingId=id; FM.ings[i].ingName=name;
