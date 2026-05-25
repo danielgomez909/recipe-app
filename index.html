@@ -65,7 +65,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 @media (min-width: 500px) { .modal { border-radius: var(--radius); } }
 .modal-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
 .modal-title { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; color: var(--brown); }
-.modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; overflow-x: visible; }
 .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; background: var(--cream); }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 500; color: var(--brown-light); margin-bottom: 5px; letter-spacing: .05em; text-transform: uppercase; }
@@ -91,11 +91,11 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .ing-build-row .del-btn:hover { color: var(--accent); }
 .ing-build-header { display: grid; grid-template-columns: 1fr 60px 100px 28px; background: var(--cream2); border-bottom: 1px solid var(--border); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 .ing-build-header span { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); padding: 5px 8px; }
-.ing-build-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; }
+.ing-build-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: visible; margin-bottom: 8px; }
 /* Ingredient search dropdown */
 .ing-search-wrap { position: relative; }
 .ing-search-input { width: 100%; padding: 7px 8px; font-size: 13px; border: none; background: transparent; color: var(--brown); outline: none; font-family: 'DM Sans', sans-serif; }
-.ing-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); z-index: 50; max-height: 180px; overflow-y: auto; box-shadow: var(--shadow); }
+.ing-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); z-index: 200; max-height: 220px; overflow-y: auto; box-shadow: 0 4px 16px rgba(61,43,31,0.15); }
 .ing-dropdown-item { padding: 7px 10px; font-size: 13px; cursor: pointer; color: var(--brown); }
 .ing-dropdown-item:hover, .ing-dropdown-item.highlighted { background: var(--cream2); }
 .ing-dropdown-item.create { color: var(--accent); font-weight: 500; }
