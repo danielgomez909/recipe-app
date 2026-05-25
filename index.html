@@ -446,6 +446,8 @@ function parseFraction(s){
   if(frac)return Math.max(0,parseInt(frac[1])/parseInt(frac[2]));
   return null;
 }
+
+function buildUnitOpts(selId){
   const grps={'Volume – English':[],'Volume – Metric':[],'Weight – English':[],'Weight – Metric':[]};
   for(const u of S.units){
     const k=`${u.type==='volume'?'Volume':'Weight'} – ${u.system==='english'?'English':'Metric'}`;
