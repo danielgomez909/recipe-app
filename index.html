@@ -417,10 +417,17 @@ function renderRecipeModal(editId){
 
 function ingRowHtml(ing,i){
   const linked=!!ing.ingId;
-  const rowBg=linked?'':'background:#fff8f5;';
-  return `<div class="ing-build-row" id="ir-${i}" style="${rowBg}">
+  const hasUnlinkedText=!linked&&!!ing.ingName.trim();
+  return `<div class="ing-build-row" id="ir-${i}" style="${hasUnlinkedText?'background:#fff8f5;':''}">
     <div class="ing-search-wrap" style="position:relative">
-      <input class="ing-search-input" id="is-${i}" placeholder="${linked?'':'⚠ search & select...'}" value="${esc(ing.ingName)}" oninput="handleIngSearch(${i},this.value)" onfocus="showIngDrop(${i})" autocomplete="off" style="${!linked&&ing.ingName?'color:#c0622a;':''}" title="${linked?'':'Must select from list'}">
+      <input class="ing-search-input" id="is-${i}"
+        placeholder="type to search..."
+        value="${esc(ing.ingName)}"
+        oninput="handleIngSearch(${i},this.value)"
+        onfocus="showIngDrop(${i})"
+        autocomplete="off"
+        style="${linked?'color:var(--green);font-weight:500;':hasUnlinkedText?'color:#c0622a;':''}">
+      ${linked?`<div style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:var(--green);font-size:12px;pointer-events:none">✓</div>`:''}
       <div class="ing-dropdown" id="id-${i}" style="display:none"></div>
     </div>
     <input type="text" inputmode="decimal" placeholder="e.g. 1/2" value="${esc(ing.qty)}" oninput="FM.ings[${i}].qty=this.value" style="border-right:1px solid var(--border)">
@@ -491,10 +498,7 @@ function showIngDrop(i){
 
 function selectIng(i,id,name){
   FM.ings[i].ingId=id; FM.ings[i].ingName=name;
-  const input=document.getElementById(`is-${i}`);
-  const drop=document.getElementById(`id-${i}`);
-  if(input)input.value=name;
-  if(drop)drop.style.display='none';
+  rerenderIngList();
 }
 
 async function quickCreateIng(i){
