@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decent Eats — Project Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #faf7f2; --cream2: #f3ede3; --brown: #3d2b1f; --brown-light: #7a5c4a;
+    --accent: #c0622a; --accent-light: #e8d5c4; --green: #4a6741; --green-light: #dce8d8;
+    --border: rgba(61,43,31,0.12); --border-strong: rgba(61,43,31,0.22);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--brown); line-height: 1.7; }
+
+  .page { max-width: 820px; margin: 0 auto; padding: 60px 40px 80px; }
+
+  /* Header */
+  .doc-header { border-bottom: 2px solid var(--brown); padding-bottom: 28px; margin-bottom: 48px; }
+  .doc-title { font-family: 'Lora', serif; font-size: 36px; font-weight: 600; color: var(--brown); margin-bottom: 6px; }
+  .doc-subtitle { font-size: 15px; color: var(--brown-light); }
+  .doc-meta { margin-top: 16px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .doc-meta span { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--brown-light); }
+  .doc-meta span strong { color: var(--accent); }
+
+  /* Sections */
+  h2 { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; color: var(--brown); margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-strong); }
+  h3 { font-size: 15px; font-weight: 500; color: var(--accent); margin: 24px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+  p { font-size: 15px; margin-bottom: 12px; color: var(--brown); }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { font-size: 15px; margin-bottom: 6px; color: var(--brown); }
+  li strong { color: var(--brown); font-weight: 500; }
+
+  /* Code / monospace */
+  code { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--cream2); padding: 2px 6px; border-radius: 4px; color: var(--accent); border: 1px solid var(--border); }
+  .code-block { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--brown); color: #f3ede3; padding: 16px 20px; border-radius: 8px; margin: 12px 0 20px; white-space: pre; overflow-x: auto; line-height: 1.6; }
+
+  /* Info boxes */
+  .info-box { background: var(--green-light); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+  .info-box p { margin: 0; font-size: 14px; color: var(--green); }
+  .warn-box { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+  .warn-box p { margin: 0; font-size: 14px; color: var(--brown-mid); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); border-bottom: 2px solid var(--border-strong); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 12px; }
+
+  /* Architecture diagram */
+  .arch { display: flex; align-items: center; gap: 0; margin: 24px 0; flex-wrap: wrap; }
+  .arch-box { background: white; border: 1px solid var(--border-strong); border-radius: 10px; padding: 16px 20px; min-width: 130px; text-align: center; }
+  .arch-box .label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); margin-bottom: 4px; }
+  .arch-box .name { font-family: 'Lora', serif; font-size: 16px; font-weight: 600; color: var(--brown); }
+  .arch-box .detail { font-size: 11px; color: var(--brown-light); margin-top: 4px; }
+  .arch-box.accent { background: var(--accent); border-color: var(--accent); }
+  .arch-box.accent .label, .arch-box.accent .name, .arch-box.accent .detail { color: white; }
+  .arch-arrow { font-size: 20px; color: var(--brown-light); padding: 0 10px; flex-shrink: 0; }
+
+  /* DB schema */
+  .schema-table { background: white; border: 1px solid var(--border-strong); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .schema-table-header { background: var(--cream2); padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .schema-table-name { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--brown); }
+  .schema-table-desc { font-size: 12px; color: var(--brown-light); }
+  .schema-row { display: grid; grid-template-columns: 160px 100px 1fr; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; align-items: baseline; }
+  .schema-row:last-child { border-bottom: none; }
+  .schema-col { font-family: 'DM Mono', monospace; color: var(--accent); }
+  .schema-type { color: var(--brown-light); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .schema-desc { color: var(--brown); }
+  .pk { font-size: 10px; background: var(--accent); color: white; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+  .fk { font-size: 10px; background: var(--green); color: white; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+
+  /* Backlog */
+  .backlog-section { margin-bottom: 24px; }
+  .backlog-item { display: flex; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: white; }
+  .backlog-tag { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; height: fit-content; margin-top: 2px; }
+  .tag-ux { background: var(--accent-light); color: var(--accent); }
+  .tag-feature { background: var(--green-light); color: var(--green); }
+  .tag-data { background: #e8eaf6; color: #3949ab; }
+  .backlog-text { font-size: 14px; color: var(--brown); }
+
+  /* Deploy steps */
+  .step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-body { flex: 1; padding-top: 3px; }
+  .step-body strong { display: block; font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .step-body span { font-size: 13px; color: var(--brown-light); }
+
+  @media print {
+    body { background: white; }
+    h2 { page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div class="doc-title">Decent Eats</div>
+    <div class="doc-subtitle">Project reference — architecture, deployment, and backlog</div>
+    <div class="doc-meta">
+      <span>Created <strong>May 2026</strong></span>
+      <span>App URL <strong>project-a7lbt.vercel.app</strong></span>
+      <span>Status <strong>Active</strong></span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <h2>Overview</h2>
+  <p>Decent Eats is a personal recipe management web app. It replaces the Blogger site at <code>gomezcookery.blogspot.com</code> with a structured, searchable database of recipes, ingredient cross-referencing, and cooking notes.</p>
+  <p>It runs as a single HTML file hosted on Vercel, connected to a Supabase PostgreSQL database. No frameworks, no build step — just one file that works in any browser on desktop, iPhone, and iPad.</p>
+
+  <!-- ARCHITECTURE -->
+  <h2>Architecture</h2>
+
+  <div class="arch">
+    <div class="arch-box">
+      <div class="label">Your devices</div>
+      <div class="name">Browser</div>
+      <div class="detail">Desktop, iPhone, iPad</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-box accent">
+      <div class="label">Hosting</div>
+      <div class="name">Vercel</div>
+      <div class="detail">project-a7lbt.vercel.app</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-box">
+      <div class="label">Database</div>
+      <div class="name">Supabase</div>
+      <div class="detail">PostgreSQL + REST API</div>
+    </div>
+  </div>
+
+  <div class="arch" style="margin-top:0">
+    <div class="arch-box">
+      <div class="label">Source code</div>
+      <div class="name">GitHub</div>
+      <div class="detail">danielgomez909/recipe-app</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-box">
+      <div class="label">Deploy trigger</div>
+      <div class="name">Auto-deploy</div>
+      <div class="detail">Push to main → live in ~30s</div>
+    </div>
+  </div>
+
+  <h3>How it fits together</h3>
+  <ol>
+    <li>The app is a single file: <code>index.html</code>, stored in a GitHub repository.</li>
+    <li>Vercel watches that repository. Every time you push a change to the <code>main</code> branch, Vercel automatically deploys the updated file within about 30 seconds.</li>
+    <li>The app talks directly to Supabase via its REST API using your anon key. All recipe data lives in Supabase — not in the file itself.</li>
+    <li>Because the data is in Supabase (cloud), it is accessible from any device that opens the app URL.</li>
+  </ol>
+
+  <!-- ACCOUNT DETAILS -->
+  <h2>Service Accounts &amp; Keys</h2>
+
+  <div class="warn-box"><p>Keep these values private. Do not share them publicly or commit them to a public repository.</p></div>
+
+  <h3>Supabase</h3>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Project URL</td><td><code>https://ntrhptxetvdjhoqfaytl.supabase.co</code></td></tr>
+    <tr><td>Anon key</td><td><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…</code> (in index.html)</td></tr>
+    <tr><td>Dashboard</td><td><code>supabase.com</code> → sign in → project ntrhptxetvdjhoqfaytl</td></tr>
+    <tr><td>SQL Editor</td><td>Use for schema changes and manual data edits</td></tr>
+    <tr><td>Table Editor</td><td>Use to add ingredient types, view/edit rows directly</td></tr>
+  </table>
+
+  <h3>GitHub</h3>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Account</td><td>danielgomez909</td></tr>
+    <tr><td>Repository</td><td>danielgomez909/recipe-app</td></tr>
+    <tr><td>Branch</td><td>main</td></tr>
+    <tr><td>Local path</td><td>Google Drive → My Drive → Dan-Git → recipe-app</td></tr>
+    <tr><td>Desktop app</td><td>GitHub Desktop (installed on Windows)</td></tr>
+  </table>
+
+  <h3>Vercel</h3>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Project name</td><td>project-a7lbt</td></tr>
+    <tr><td>Live URL</td><td><code>https://project-a7lbt.vercel.app</code></td></tr>
+    <tr><td>Connected repo</td><td>danielgomez909/recipe-app (main branch)</td></tr>
+    <tr><td>Dashboard</td><td><code>vercel.com</code> → Dan's projects</td></tr>
+  </table>
+
+  <!-- DATABASE SCHEMA -->
+  <h2>Database Schema</h2>
+  <p>All tables live in Supabase (PostgreSQL). The REST API is used directly from the browser — no backend server required.</p>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">ingredient_types</span><span class="schema-table-desc">Reference — fat, protein, vegetable, other</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">serial</span><span class="schema-desc">Auto-incrementing integer</span></div>
+    <div class="schema-row"><span class="schema-col">name</span><span class="schema-type">text</span><span class="schema-desc">Unique type name (fat, protein, vegetable, other)</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">units</span><span class="schema-table-desc">Reference — all valid measurement units</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">serial</span><span class="schema-desc">Auto-incrementing integer</span></div>
+    <div class="schema-row"><span class="schema-col">name</span><span class="schema-type">text</span><span class="schema-desc">Full name, e.g. "tablespoon"</span></div>
+    <div class="schema-row"><span class="schema-col">abbreviation</span><span class="schema-type">text</span><span class="schema-desc">Short form, e.g. "tbsp"</span></div>
+    <div class="schema-row"><span class="schema-col">system</span><span class="schema-type">text</span><span class="schema-desc">"english" or "metric"</span></div>
+    <div class="schema-row"><span class="schema-col">type</span><span class="schema-type">text</span><span class="schema-desc">"volume" or "weight"</span></div>
+    <div class="schema-row"><span class="schema-col">base_unit</span><span class="schema-type">text</span><span class="schema-desc">"ml" for volume, "g" for weight — enables conversion math</span></div>
+    <div class="schema-row"><span class="schema-col">base_multiplier</span><span class="schema-type">numeric</span><span class="schema-desc">How many base units this unit equals (e.g. 1 tbsp = 14.7868 ml)</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">ingredient_master</span><span class="schema-table-desc">Master list of all ingredients</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">uuid</span><span class="schema-desc">Auto-generated unique ID</span></div>
+    <div class="schema-row"><span class="schema-col">name</span><span class="schema-type">text</span><span class="schema-desc">Ingredient name, unique</span></div>
+    <div class="schema-row"><span class="schema-col">type_id<span class="fk">FK</span></span><span class="schema-type">int</span><span class="schema-desc">References ingredient_types.id</span></div>
+    <div class="schema-row"><span class="schema-col">nutrition_info</span><span class="schema-type">jsonb</span><span class="schema-desc">Flexible JSON field for future nutrition data</span></div>
+    <div class="schema-row"><span class="schema-col">created_at</span><span class="schema-type">timestamptz</span><span class="schema-desc">Auto-set on insert</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">recipes</span><span class="schema-table-desc">Core recipe record</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">uuid</span><span class="schema-desc">Auto-generated unique ID</span></div>
+    <div class="schema-row"><span class="schema-col">name</span><span class="schema-type">text</span><span class="schema-desc">Recipe name, required</span></div>
+    <div class="schema-row"><span class="schema-col">source</span><span class="schema-type">text</span><span class="schema-desc">URL, book title, person, etc.</span></div>
+    <div class="schema-row"><span class="schema-col">serves</span><span class="schema-type">text</span><span class="schema-desc">Free text, e.g. "4" or "6–8"</span></div>
+    <div class="schema-row"><span class="schema-col">notes</span><span class="schema-type">text</span><span class="schema-desc">Free-text notes, variations, memories</span></div>
+    <div class="schema-row"><span class="schema-col">created_at</span><span class="schema-type">timestamptz</span><span class="schema-desc">Auto-set on insert</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">recipe_steps</span><span class="schema-table-desc">Ordered steps for each recipe ("Program")</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">uuid</span><span class="schema-desc">Auto-generated unique ID</span></div>
+    <div class="schema-row"><span class="schema-col">recipe_id<span class="fk">FK</span></span><span class="schema-type">uuid</span><span class="schema-desc">References recipes.id — cascades on delete</span></div>
+    <div class="schema-row"><span class="schema-col">step_number</span><span class="schema-type">int</span><span class="schema-desc">Order of the step, unique per recipe</span></div>
+    <div class="schema-row"><span class="schema-col">instruction</span><span class="schema-type">text</span><span class="schema-desc">Step text</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">recipe_ingredients</span><span class="schema-table-desc">Junction — links recipes to ingredients with quantity</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">uuid</span><span class="schema-desc">Auto-generated unique ID</span></div>
+    <div class="schema-row"><span class="schema-col">recipe_id<span class="fk">FK</span></span><span class="schema-type">uuid</span><span class="schema-desc">References recipes.id — cascades on delete</span></div>
+    <div class="schema-row"><span class="schema-col">ingredient_id<span class="fk">FK</span></span><span class="schema-type">uuid</span><span class="schema-desc">References ingredient_master.id</span></div>
+    <div class="schema-row"><span class="schema-col">quantity</span><span class="schema-type">numeric</span><span class="schema-desc">Stored as decimal (e.g. 0.5 for ½). Displayed as fraction in the app.</span></div>
+    <div class="schema-row"><span class="schema-col">unit_id<span class="fk">FK</span></span><span class="schema-type">int</span><span class="schema-desc">References units.id — nullable (null = count)</span></div>
+    <div class="schema-row"><span class="schema-col">or_group</span><span class="schema-type">int</span><span class="schema-desc">Nullable. Same number = swappable alternatives (e.g. butter OR oil)</span></div>
+  </div>
+
+  <!-- DEPLOY WORKFLOW -->
+  <h2>Deployment Workflow</h2>
+  <p>How to update the app after making changes to <code>index.html</code>:</p>
+
+  <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Edit index.html</strong><span>Open the file at Google Drive → My Drive → Dan-Git → recipe-app → index.html. Make your changes and save.</span></div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Open GitHub Desktop</strong><span>The app will detect the changed file and show it under "Changes".</span></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Write a summary and commit</strong><span>Type a short description in the Summary box (e.g. "add checklist tab"), then click Commit to main.</span></div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Push to GitHub</strong><span>Click Push origin at the top. This sends your change to GitHub.</span></div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Vercel auto-deploys</strong><span>Within ~30 seconds, Vercel detects the push and deploys the new version. Visit project-a7lbt.vercel.app to confirm.</span></div></div>
+
+  <div class="info-box"><p>To make a database schema change (add a column, new table, etc.), go to Supabase → SQL Editor, run your SQL, then update the app code if needed and deploy.</p></div>
+
+  <h3>Installing on iPhone / iPad</h3>
+  <ol>
+    <li>Open <code>project-a7lbt.vercel.app</code> in Safari</li>
+    <li>Tap the Share button (box with arrow)</li>
+    <li>Tap <strong>Add to Home Screen</strong></li>
+    <li>The app appears as an icon and opens full-screen like a native app</li>
+  </ol>
+
+  <!-- BACKLOG -->
+  <h2>Feature Backlog</h2>
+
+  <h3>UX improvements</h3>
+  <div class="backlog-section">
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Auto-select ingredient when typed name exactly matches an entry in the master list</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Limit ingredient dropdown initial size (before typing) as master list grows large</span></div>
+  </div>
+
+  <h3>New features</h3>
+  <div class="backlog-section">
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Checklist mode — a separate tab to "use" a recipe, with checkable ingredients and steps that you can tick off as you cook</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">YouTube / video link field on recipes — optional, separate from source, for linking or embedding cooking videos</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Equipment field — capture the hardware used in a recipe (e.g. dutch oven, cast iron skillet, air fryer)</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Tagging — tag recipes by category (similar to the blog), with filtering by tag on the recipes tab</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Sidebars tab — misc cooking ramblings and notes that aren't full recipes (mirrors the blog format)</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Cross-ref compound search — search for recipes that share multiple specific ingredients</span></div>
+  </div>
+
+  <h3>Data &amp; import</h3>
+  <div class="backlog-section">
+    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Import recipe from a website URL — paste a link and have the app parse and pre-fill the recipe form</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Bulk upload ingredients from a CSV file</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Bulk load recipes from a file (provide a template with the required columns)</span></div>
+  </div>
+
+</div>
+</body>
+</html>
