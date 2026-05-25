@@ -176,7 +176,12 @@ function toFraction(d){
   const[n,dn]=best;
   return w===0?`${n}/${dn}`:`${w} ${n}/${dn}`;
 }
-function fmtQty(qty,unit){ const q=qty!=null?toFraction(qty):''; const u=unit?unit.abbreviation:''; return[q,u].filter(Boolean).join(' '); }
+function fmtQty(qty,unit){
+  if(!unit) return qty!=null?toFraction(qty):'';
+  if(unit.abbreviation==='pinch'){ const n=qty!=null?toFraction(qty):'1'; return `${n} pinch`; }
+  const q=qty!=null?toFraction(qty):''; const u=unit.abbreviation||'';
+  return[q,u].filter(Boolean).join(' ');
+}
 
 // State
 const S = { tab:'recipes', viewingRecipe:null, recipes:[], units:[], types:[], ingredients:[], searchQ:'' };
@@ -221,12 +226,13 @@ function render(){
     renderIngredientList();
   } else {
     addBtn.style.display='none';
-    searchBar.style.display='none';
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search ingredients or recipes...';
     renderXref();
   }
 }
 
-function handleSearch(q){ S.searchQ=q; render(); }
+function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
   S.tab=tab; S.viewingRecipe=null; S.searchQ='';
@@ -260,28 +266,44 @@ async function renderXref(){
   c.innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
   try {
     const rows=await db.get('recipe_ingredients?select=ingredient_master(id,name),recipes(id,name)');
-    const map={};
+    S.xrefData={};
     for(const row of rows){
       const ing=row.ingredient_master, rec=row.recipes;
       if(!ing||!rec)continue;
-      if(!map[ing.id])map[ing.id]={name:ing.name,recipes:{}};
-      map[ing.id].recipes[rec.id]=rec.name;
+      if(!S.xrefData[ing.id])S.xrefData[ing.id]={name:ing.name,recipes:{}};
+      S.xrefData[ing.id].recipes[rec.id]=rec.name;
     }
-    const sorted=Object.values(map).sort((a,b)=>Object.keys(b.recipes).length-Object.keys(a.recipes).length);
-    if(!sorted.length){c.innerHTML='<div class="empty"><h3>No data yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>';return;}
-    const shared=sorted.filter(x=>Object.keys(x.recipes).length>1);
-    const single=sorted.filter(x=>Object.keys(x.recipes).length===1);
-    let html='';
-    if(shared.length){
-      html+='<div class="section-label">Shared across recipes</div>';
-      html+=shared.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
-    }
-    if(single.length){
-      html+='<div class="section-label" style="margin-top:16px">Used in one recipe</div>';
-      html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
-    }
-    c.innerHTML=html;
+    renderXrefFiltered();
   } catch(e){ c.innerHTML='<p>Error loading.</p>'; }
+}
+
+function renderXrefFiltered(){
+  const c=document.getElementById('content');
+  if(!S.xrefData){ renderXref(); return; }
+  const q=(S.searchQ||'').toLowerCase().trim();
+  let sorted=Object.values(S.xrefData).sort((a,b)=>Object.keys(b.recipes).length-Object.keys(a.recipes).length);
+  if(q){
+    sorted=sorted.filter(x=>
+      x.name.toLowerCase().includes(q) ||
+      Object.values(x.recipes).some(r=>r.toLowerCase().includes(q))
+    );
+  }
+  if(!sorted.length){
+    c.innerHTML=q?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No data yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>';
+    return;
+  }
+  const shared=sorted.filter(x=>Object.keys(x.recipes).length>1);
+  const single=sorted.filter(x=>Object.keys(x.recipes).length===1);
+  let html='';
+  if(shared.length){
+    html+='<div class="section-label">Shared across recipes</div>';
+    html+=shared.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+  }
+  if(single.length){
+    html+='<div class="section-label" style="margin-top:16px">Used in one recipe</div>';
+    html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+  }
+  c.innerHTML=html;
 }
 
 async function viewRecipe(id){
@@ -473,26 +495,28 @@ function attachIngDropdowns(){
     const input=document.getElementById(`is-${i}`);
     const drop=document.getElementById(`id-${i}`);
     if(!input||!drop)return;
-    input.onblur=()=>setTimeout(()=>{ drop.style.display='none'; },150);
+    input.onblur=()=>setTimeout(()=>{ drop.style.display='none'; },300);
   });
 }
 
 function handleIngSearch(i, val){
   FM.ings[i].ingName=val;
-  FM.ings[i].ingId=''; // clear link when user types
-  showIngDrop(i);
+  FM.ings[i].ingId='';
+  buildIngDrop(i, val);
 }
 
 function showIngDrop(i){
+  buildIngDrop(i, FM.ings[i].ingName||'');
+}
+
+function buildIngDrop(i, val){
   const drop=document.getElementById(`id-${i}`);
   if(!drop)return;
-  const q=(FM.ings[i].ingName||'').toLowerCase().trim();
+  const q=val.toLowerCase().trim();
   const filtered=q ? S.ingredients.filter(x=>x.name.toLowerCase().includes(q)) : S.ingredients.slice(0,15);
-  const createLabel=FM.ings[i].ingName.trim();
-  drop.innerHTML=[
-    ...filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault()" onclick="selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}')">${esc(x.name)}</div>`),
-    createLabel?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault()" onclick="quickCreateIng(${i})">+ Create &ldquo;${esc(createLabel)}&rdquo;</div>`:''
-  ].join('');
+  // always show create option if there's text, even if matches exist
+  const createItem=val.trim()?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault();quickCreateIng(${i})">+ Create &ldquo;${esc(val.trim())}&rdquo; as new ingredient</div>`:'';
+  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}')">${esc(x.name)}</div>`).join('')+createItem;
   drop.style.display='block';
 }
 
