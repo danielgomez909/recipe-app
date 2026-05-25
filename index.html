@@ -5,178 +5,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Recipes">
-<title>My Recipe Book</title>
+<meta name="apple-mobile-web-app-title" content="Decent Eats">
+<title>Decent Eats</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --cream: #faf7f2;
-  --cream2: #f3ede3;
-  --brown: #3d2b1f;
-  --brown-light: #7a5c4a;
-  --brown-mid: #5c3f2e;
-  --accent: #c0622a;
-  --accent-light: #e8d5c4;
-  --green: #4a6741;
-  --green-light: #dce8d8;
-  --border: rgba(61,43,31,0.12);
-  --border-strong: rgba(61,43,31,0.25);
-  --shadow: 0 2px 12px rgba(61,43,31,0.08);
-  --radius: 12px;
-  --radius-sm: 8px;
+  --cream: #faf7f2; --cream2: #f3ede3; --brown: #3d2b1f; --brown-light: #7a5c4a;
+  --brown-mid: #5c3f2e; --accent: #c0622a; --accent-light: #e8d5c4;
+  --green: #4a6741; --green-light: #dce8d8; --border: rgba(61,43,31,0.12);
+  --border-strong: rgba(61,43,31,0.25); --shadow: 0 2px 12px rgba(61,43,31,0.08);
+  --radius: 12px; --radius-sm: 8px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--cream); color: var(--brown); font-family: 'DM Sans', sans-serif; }
-
-/* Layout */
-.app { display: flex; flex-direction: column; height: 100svh; max-width: 680px; margin: 0 auto; background: var(--cream); position: relative; }
-.topbar { padding: 16px 20px 12px; background: var(--cream); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.topbar-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; flex: 1; color: var(--brown); }
-.topbar-back { background: none; border: none; cursor: pointer; color: var(--brown-light); font-size: 22px; padding: 0; display: flex; align-items: center; line-height: 1; }
+.app { display: flex; flex-direction: column; height: 100svh; max-width: 680px; margin: 0 auto; background: var(--cream); }
+.topbar { padding: 14px 16px 10px; background: var(--cream); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; flex: 1; color: var(--brown); }
+.topbar-back { background: none; border: none; cursor: pointer; color: var(--brown-light); font-size: 22px; padding: 0; display: flex; align-items: center; }
 .nav { display: flex; background: var(--cream); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.nav-btn { flex: 1; padding: 11px 4px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 400; border: none; background: none; color: var(--brown-light); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; letter-spacing: .02em; }
+.nav-btn { flex: 1; padding: 10px 4px; font-size: 13px; font-family: 'DM Sans', sans-serif; border: none; background: none; color: var(--brown-light); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
 .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+.search-bar { padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--cream); flex-shrink: 0; }
+.search-bar input { width: 100%; padding: 8px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border-strong); border-radius: 20px; background: white; color: var(--brown); outline: none; }
+.search-bar input:focus { border-color: var(--accent); }
 .content { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
-
-/* Buttons */
 .btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; transition: all .15s; border: 1px solid var(--border-strong); background: var(--cream); color: var(--brown); font-weight: 500; }
 .btn:hover { background: var(--cream2); }
 .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
 .btn-primary:hover { background: var(--brown-mid); border-color: var(--brown-mid); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--brown-light); }
-.btn-ghost:hover { background: var(--cream2); color: var(--brown); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-danger { background: #dc3545; color: white; border-color: #dc3545; }
-
-/* Cards */
-.recipe-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: all .15s; }
+.recipe-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: all .15s; }
 .recipe-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
-.recipe-card h3 { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; margin-bottom: 5px; color: var(--brown); }
-.recipe-meta { font-size: 12px; color: var(--brown-light); display: flex; gap: 14px; flex-wrap: wrap; }
-.recipe-meta span { display: flex; align-items: center; gap: 4px; }
-
-/* Detail view */
+.recipe-card h3 { font-family: 'Lora', serif; font-size: 16px; font-weight: 600; margin-bottom: 4px; color: var(--brown); }
+.recipe-card .meta { font-size: 12px; color: var(--brown-light); }
 .detail-section { background: white; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
-.detail-section-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-section-header { padding: 10px 16px; border-bottom: 1px solid var(--border); }
 .detail-section-header h4 { font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--brown-light); }
-.detail-section-body { padding: 14px 18px; }
-
-/* Ingredient rows */
-.ing-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.detail-section-body { padding: 12px 16px; }
+.ing-row { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
 .ing-row:last-child { border-bottom: none; }
 .ing-qty { color: var(--accent); font-weight: 500; min-width: 80px; font-size: 13px; }
-.ing-name { flex: 1; }
-.or-group-label { font-size: 11px; background: var(--accent-light); color: var(--accent); padding: 2px 7px; border-radius: 20px; margin-left: auto; flex-shrink: 0; }
-
-/* Steps */
-.step-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.55; }
+.or-badge { font-size: 11px; background: var(--accent-light); color: var(--accent); padding: 2px 7px; border-radius: 20px; margin-left: auto; flex-shrink: 0; }
+.step-row { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.55; }
 .step-row:last-child { border-bottom: none; }
-.step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: white; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-
-/* Notes */
+.step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
 .notes-text { font-size: 14px; line-height: 1.65; color: var(--brown); white-space: pre-wrap; font-family: 'Lora', serif; font-style: italic; }
-.notes-empty { font-size: 13px; color: var(--brown-light); }
-
-/* Source link */
-.source-link { font-size: 14px; color: var(--accent); text-decoration: none; word-break: break-all; }
-.source-link:hover { text-decoration: underline; }
-.source-text { font-size: 14px; }
-
-/* Cross-reference */
 .xref-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
 .xref-header { padding: 10px 16px; background: var(--cream2); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; color: var(--brown); display: flex; align-items: center; justify-content: space-between; }
 .xref-shared-badge { font-size: 11px; background: var(--green-light); color: var(--green); padding: 2px 8px; border-radius: 20px; }
-.xref-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.xref-row { display: flex; align-items: center; gap: 10px; padding: 7px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .xref-row:last-child { border-bottom: none; }
 .xref-recipe { font-size: 12px; color: var(--brown-light); background: var(--cream2); padding: 2px 8px; border-radius: 20px; }
-
-/* Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(61,43,31,0.4); z-index: 100; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
-@media (min-width: 480px) { .modal-overlay { align-items: center; padding: 20px; } }
-.modal { background: var(--cream); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 620px; max-height: 92svh; overflow-y: auto; padding: 20px; }
-@media (min-width: 480px) { .modal { border-radius: var(--radius); } }
-.modal-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; margin-bottom: 18px; color: var(--brown); }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-
-/* Form fields */
+.modal-overlay { position: fixed; inset: 0; background: rgba(61,43,31,0.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 500px) { .modal-overlay { align-items: center; padding: 20px; } }
+.modal { background: var(--cream); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 640px; max-height: 94svh; display: flex; flex-direction: column; }
+@media (min-width: 500px) { .modal { border-radius: var(--radius); } }
+.modal-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; color: var(--brown); }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; background: var(--cream); }
 .field { margin-bottom: 14px; }
-.field label { display: block; font-size: 12px; font-weight: 500; color: var(--brown-light); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
+.field label { display: block; font-size: 11px; font-weight: 500; color: var(--brown-light); margin-bottom: 5px; letter-spacing: .05em; text-transform: uppercase; }
 .field input, .field textarea, .field select {
-  width: 100%; padding: 9px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+  width: 100%; padding: 8px 11px; font-size: 14px; font-family: 'DM Sans', sans-serif;
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: white; color: var(--brown); outline: none; transition: border-color .15s;
 }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a5c4a' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-
-/* Ingredient builder */
-.ing-builder { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; }
-.ing-builder-row { display: grid; grid-template-columns: 1fr 70px 90px 28px; gap: 0; border-bottom: 1px solid var(--border); }
-.ing-builder-row:last-child { border-bottom: none; }
-.ing-builder-row input, .ing-builder-row select {
-  border: none; border-right: 1px solid var(--border); border-radius: 0;
-  padding: 8px 10px; font-size: 13px; background: white; color: var(--brown); outline: none; width: 100%;
-}
-.ing-builder-row input:focus, .ing-builder-row select:focus { background: #fffdf9; }
-.ing-builder-row select { appearance: none; }
-.ing-builder-row .del-btn { border: none; background: none; cursor: pointer; color: var(--brown-light); font-size: 16px; display: flex; align-items: center; justify-content: center; }
-.ing-builder-row .del-btn:hover { color: var(--accent); background: var(--cream2); }
-.ing-builder-header { display: grid; grid-template-columns: 1fr 70px 90px 28px; background: var(--cream2); border-bottom: 1px solid var(--border); }
-.ing-builder-header span { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); padding: 5px 10px; }
-
-/* Or-group section */
-.or-group-section { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; background: var(--cream2); }
-.or-group-label-form { font-size: 11px; font-weight: 500; color: var(--brown-light); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-
-/* Steps builder */
-.step-builder-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: flex-start; }
-.step-builder-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 8px; }
-.step-builder-row textarea { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; resize: none; min-height: 36px; line-height: 1.4; background: white; color: var(--brown); outline: none; }
-.step-builder-row textarea:focus { border-color: var(--accent); }
-
-/* Empty state */
-.empty { text-align: center; padding: 4rem 1rem 2rem; color: var(--brown-light); }
-.empty-icon { font-size: 40px; margin-bottom: 12px; }
-.empty h3 { font-family: 'Lora', serif; font-size: 18px; margin-bottom: 6px; color: var(--brown); }
-.empty p { font-size: 14px; line-height: 1.6; }
-
-/* Loading */
-.loading { text-align: center; padding: 3rem; color: var(--brown-light); font-size: 14px; }
-.spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Toast */
-.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brown); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
-.toast.show { opacity: 1; }
-
-/* Divider */
-.section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--brown-light); margin: 16px 0 8px; }
-.add-link { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; font-family: 'DM Sans', sans-serif; padding: 4px 0; display: flex; align-items: center; gap: 4px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--brown-light); margin: 14px 0 8px; }
+.add-link { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; font-family: 'DM Sans', sans-serif; padding: 4px 0; display: inline-flex; align-items: center; gap: 3px; }
 .add-link:hover { text-decoration: underline; }
-
-/* Action row in detail */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+/* Ingredient builder */
+.ing-build-row { display: grid; grid-template-columns: 1fr 60px 100px 28px; border-bottom: 1px solid var(--border); background: white; }
+.ing-build-row:last-child { border-bottom: none; }
+.ing-build-row input, .ing-build-row select { border: none; border-right: 1px solid var(--border); border-radius: 0; padding: 7px 8px; font-size: 13px; background: transparent; color: var(--brown); outline: none; width: 100%; font-family: 'DM Sans', sans-serif; }
+.ing-build-row input:focus, .ing-build-row select:focus { background: #fffdf9; }
+.ing-build-row .del-btn { border: none; background: none; cursor: pointer; color: var(--brown-light); font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.ing-build-row .del-btn:hover { color: var(--accent); }
+.ing-build-header { display: grid; grid-template-columns: 1fr 60px 100px 28px; background: var(--cream2); border-bottom: 1px solid var(--border); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.ing-build-header span { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); padding: 5px 8px; }
+.ing-build-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; }
+/* Ingredient search dropdown */
+.ing-search-wrap { position: relative; }
+.ing-search-input { width: 100%; padding: 7px 8px; font-size: 13px; border: none; background: transparent; color: var(--brown); outline: none; font-family: 'DM Sans', sans-serif; }
+.ing-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); z-index: 50; max-height: 180px; overflow-y: auto; box-shadow: var(--shadow); }
+.ing-dropdown-item { padding: 7px 10px; font-size: 13px; cursor: pointer; color: var(--brown); }
+.ing-dropdown-item:hover, .ing-dropdown-item.highlighted { background: var(--cream2); }
+.ing-dropdown-item.create { color: var(--accent); font-weight: 500; }
+/* Step builder */
+.step-build-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+.step-build-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 7px; }
+.step-build-row textarea { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; resize: none; min-height: 38px; line-height: 1.4; background: white; color: var(--brown); outline: none; }
+.step-build-row textarea:focus { border-color: var(--accent); }
+.empty { text-align: center; padding: 3rem 1rem 2rem; color: var(--brown-light); }
+.empty h3 { font-family: 'Lora', serif; font-size: 18px; margin-bottom: 6px; color: var(--brown); }
+.empty p { font-size: 14px; }
+.loading { text-align: center; padding: 3rem; color: var(--brown-light); font-size: 14px; }
+.spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brown); color: white; padding: 9px 18px; border-radius: 20px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
 .detail-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+/* Ingredient master list */
+.ing-master-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; gap: 10px; }
+.ing-master-row:last-child { border-bottom: none; }
+.ing-type-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--cream2); color: var(--brown-light); }
+/* New ingredient inline form */
+.new-ing-form { background: var(--cream2); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 6px; }
+.new-ing-form .row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; margin-bottom: 8px; }
+.new-ing-form input, .new-ing-form select { padding: 7px 10px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--brown); outline: none; font-family: 'DM Sans', sans-serif; width: 100%; }
 </style>
 </head>
 <body>
-
 <div class="app">
   <div class="topbar">
     <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Back">&#8592;</button>
-    <div class="topbar-title" id="topbar-title">My Recipe Book</div>
-    <button class="btn btn-sm" id="add-btn" onclick="openAddRecipe()">+ Add Recipe</button>
+    <div class="topbar-title" id="topbar-title">Decent Eats</div>
+    <button class="btn btn-sm btn-primary" id="add-btn" onclick="openAddRecipe()">+ Recipe</button>
   </div>
   <div class="nav" id="main-nav">
     <button class="nav-btn active" onclick="switchTab('recipes')">Recipes</button>
     <button class="nav-btn" onclick="switchTab('ingredients')">Ingredients</button>
+    <button class="nav-btn" onclick="switchTab('xref')">Cross-ref</button>
+  </div>
+  <div class="search-bar" id="search-bar">
+    <input type="search" id="search-input" placeholder="Search recipes..." oninput="handleSearch(this.value)">
   </div>
   <div class="content" id="content">
     <div class="loading"><div class="spinner"></div>Loading...</div>
   </div>
 </div>
-
 <div id="modal-root"></div>
 <div class="toast" id="toast"></div>
 
@@ -184,486 +149,432 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 const SUPABASE_URL = 'https://ntrhptxetvdjhoqfaytl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cmhwdHhldHZkamhvcWZheXRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTc2NDQsImV4cCI6MjA5NTIzMzY0NH0.dWpCNGNtUMAqFC3S22s-xxIUMYWyH9TnPwAhyVYuhqk';
 
+async function dbReq(path, opts={}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': opts.prefer||'return=representation', ...opts.headers },
+    method: opts.method||'GET', body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text(); return t ? JSON.parse(t) : null;
+}
 const db = {
-  async query(path, opts = {}) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': opts.prefer || 'return=representation',
-        ...opts.headers
-      },
-      method: opts.method || 'GET',
-      body: opts.body ? JSON.stringify(opts.body) : undefined
-    });
-    if (!res.ok) { const e = await res.text(); throw new Error(e); }
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
-  },
-  get: (path) => db.query(path),
-  post: (path, body) => db.query(path, { method: 'POST', body }),
-  patch: (path, body) => db.query(path, { method: 'PATCH', body }),
-  delete: (path) => db.query(path, { method: 'DELETE', prefer: 'return=minimal' }),
+  get: p => dbReq(p),
+  post: (p,b) => dbReq(p,{method:'POST',body:b}),
+  patch: (p,b) => dbReq(p,{method:'PATCH',body:b}),
+  del: p => dbReq(p,{method:'DELETE',prefer:'return=minimal'})
 };
+
+function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function toFraction(d){
+  if(d==null)return''; d=Number(d); if(Number.isInteger(d))return String(d);
+  const w=Math.floor(d), f=d-w;
+  const fracs=[[1,2],[1,3],[2,3],[1,4],[3,4],[1,8],[3,8],[5,8],[7,8]];
+  let best=null,bd=Infinity;
+  for(const[n,dn]of fracs){const diff=Math.abs(f-n/dn);if(diff<bd){bd=diff;best=[n,dn];}}
+  if(bd>0.04)return d.toFixed(2);
+  const[n,dn]=best;
+  return w===0?`${n}/${dn}`:`${w} ${n}/${dn}`;
+}
+function fmtQty(qty,unit){ const q=qty!=null?toFraction(qty):''; const u=unit?unit.abbreviation:''; return[q,u].filter(Boolean).join(' '); }
 
 // State
-let state = {
-  tab: 'recipes',
-  viewingRecipe: null,
-  recipes: [],
-  units: [],
-  ingredientTypes: [],
-  allIngredients: [],
-};
+const S = { tab:'recipes', viewingRecipe:null, recipes:[], units:[], types:[], ingredients:[], searchQ:'' };
 
-// Toast
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// Fraction display
-function toFraction(decimal) {
-  if (!decimal && decimal !== 0) return '';
-  if (Number.isInteger(decimal)) return String(decimal);
-  const whole = Math.floor(decimal);
-  const frac = decimal - whole;
-  const fractions = [[1,2],[1,3],[2,3],[1,4],[3,4],[1,8],[3,8],[5,8],[7,8]];
-  let best = null, bestDiff = Infinity;
-  for (const [n,d] of fractions) {
-    const diff = Math.abs(frac - n/d);
-    if (diff < bestDiff) { bestDiff = diff; best = [n,d]; }
-  }
-  if (bestDiff > 0.04) return decimal.toFixed(2);
-  const [n,d] = best;
-  if (whole === 0) return `${n}/${d}`;
-  return `${whole} ${n}/${d}`;
-}
-
-function fmtQty(qty, unit) {
-  const q = qty != null ? toFraction(Number(qty)) : '';
-  const u = unit ? unit.abbreviation : '';
-  return [q, u].filter(Boolean).join(' ');
-}
-
-// Load reference data
-async function loadRefs() {
-  const [units, types, ings] = await Promise.all([
+async function init(){
+  const [units,types,ings,recipes] = await Promise.all([
     db.get('units?order=type,system,name'),
     db.get('ingredient_types?order=name'),
     db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)'),
+    db.get('recipes?order=name&select=id,name,source,notes,serves,created_at')
   ]);
-  state.units = units;
-  state.ingredientTypes = types;
-  state.allIngredients = ings;
-}
-
-// Load recipes
-async function loadRecipes() {
-  state.recipes = await db.get('recipes?order=name&select=id,name,source,notes,created_at');
-}
-
-async function loadRecipeDetail(id) {
-  const [steps, ings] = await Promise.all([
-    db.get(`recipe_steps?recipe_id=eq.${id}&order=step_number`),
-    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,units(abbreviation),ingredient_master(id,name,ingredient_types(name))`),
-  ]);
-  return { steps, ingredients: ings };
-}
-
-// Render
-async function init() {
-  await Promise.all([loadRefs(), loadRecipes()]);
+  S.units=units; S.types=types; S.ingredients=ings; S.recipes=recipes;
   render();
 }
 
-function render() {
-  const c = document.getElementById('content');
-  const backBtn = document.getElementById('back-btn');
+function render(){
+  const searchBar = document.getElementById('search-bar');
   const addBtn = document.getElementById('add-btn');
+  const backBtn = document.getElementById('back-btn');
   const nav = document.getElementById('main-nav');
 
-  if (state.viewingRecipe) {
-    backBtn.style.display = '';
-    addBtn.style.display = 'none';
-    nav.style.display = 'none';
-    document.getElementById('topbar-title').textContent = state.viewingRecipe.name;
-    renderDetail(c);
-    return;
+  if(S.viewingRecipe){
+    backBtn.style.display=''; addBtn.style.display='none';
+    nav.style.display='none'; searchBar.style.display='none';
+    document.getElementById('topbar-title').textContent=S.viewingRecipe.name;
+    renderDetail(); return;
   }
-  backBtn.style.display = 'none';
-  addBtn.style.display = '';
-  nav.style.display = '';
-  document.getElementById('topbar-title').textContent = 'My Recipe Book';
-  if (state.tab === 'recipes') renderRecipeList(c);
-  else renderXref(c);
+  backBtn.style.display='none'; nav.style.display='';
+  document.getElementById('topbar-title').textContent='Decent Eats';
+
+  if(S.tab==='recipes'){
+    addBtn.style.display=''; addBtn.textContent='+ Recipe';
+    addBtn.onclick=openAddRecipe;
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search recipes...';
+    renderRecipeList();
+  } else if(S.tab==='ingredients'){
+    addBtn.style.display=''; addBtn.textContent='+ Ingredient';
+    addBtn.onclick=openAddIngredient;
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search ingredients...';
+    renderIngredientList();
+  } else {
+    addBtn.style.display='none';
+    searchBar.style.display='none';
+    renderXref();
+  }
 }
 
-function renderRecipeList(c) {
-  if (!state.recipes.length) {
-    c.innerHTML = `<div class="empty"><div class="empty-icon">📖</div><h3>No recipes yet</h3><p>Add your first recipe to get started.</p></div>`;
-    return;
-  }
-  c.innerHTML = state.recipes.map(r => `
-    <div class="recipe-card" onclick="viewRecipe('${r.id}')">
-      <h3>${esc(r.name)}</h3>
-      <div class="recipe-meta">
-        <span>${esc(r.source || '—')}</span>
-      </div>
-    </div>`).join('');
+function handleSearch(q){ S.searchQ=q; render(); }
+
+function switchTab(tab){
+  S.tab=tab; S.viewingRecipe=null; S.searchQ='';
+  document.getElementById('search-input').value='';
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)));
+  render();
 }
 
-async function renderDetail(c) {
-  c.innerHTML = `<div class="loading"><div class="spinner"></div>Loading recipe...</div>`;
-  const r = state.viewingRecipe;
-  let detail;
-  try { detail = await loadRecipeDetail(r.id); } catch(e) { c.innerHTML = `<p>Error loading recipe.</p>`; return; }
+function goBack(){ S.viewingRecipe=null; S.tab='recipes'; render(); }
 
-  // Group ingredients by or_group
-  const ings = detail.ingredients;
-  const groups = {};
-  const solo = [];
-  for (const ing of ings) {
-    if (ing.or_group != null) {
-      if (!groups[ing.or_group]) groups[ing.or_group] = [];
-      groups[ing.or_group].push(ing);
-    } else { solo.push(ing); }
-  }
+function renderRecipeList(){
+  const c=document.getElementById('content');
+  let list=S.recipes;
+  if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(r=>r.name.toLowerCase().includes(q)||(r.source||'').toLowerCase().includes(q)); }
+  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No recipes yet</h3><p>Add your first recipe!</p></div>'; return; }
+  c.innerHTML=list.map(r=>`<div class="recipe-card" onclick="viewRecipe('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}${r.serves?' &middot; Serves '+esc(r.serves):''}</div></div>`).join('');
+}
 
-  const ingHtml = [
-    ...solo.map(i => `
-      <div class="ing-row">
-        <span class="ing-qty">${fmtQty(i.quantity, i.units)}</span>
-        <span class="ing-name">${esc(i.ingredient_master.name)}</span>
-      </div>`),
-    ...Object.entries(groups).map(([grp, items]) => `
-      <div class="ing-row" style="flex-direction:column;gap:4px;padding:8px 0">
-        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:4px">Choose one:</div>
-        ${items.map(i => `
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px">
-            <span class="ing-qty">${fmtQty(i.quantity, i.units)}</span>
-            <span class="ing-name">${esc(i.ingredient_master.name)}</span>
-            <span class="or-group-label">option</span>
-          </div>`).join('')}
-      </div>`)
+function renderIngredientList(){
+  const c=document.getElementById('content');
+  let list=S.ingredients;
+  if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(i=>i.name.toLowerCase().includes(q)); }
+  if(!list.length){ c.innerHTML='<div class="empty"><h3>No ingredients yet</h3><p>Add ingredients to your master list.</p></div>'; return; }
+  c.innerHTML=`<div class="detail-section"><div style="padding:0">${list.map(i=>`<div class="ing-master-row"><span style="flex:1">${esc(i.name)}</span><span class="ing-type-badge">${esc(i.ingredient_types?.name||'—')}</span></div>`).join('')}</div></div>`;
+}
+
+async function renderXref(){
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
+  try {
+    const rows=await db.get('recipe_ingredients?select=ingredient_master(id,name),recipes(id,name)');
+    const map={};
+    for(const row of rows){
+      const ing=row.ingredient_master, rec=row.recipes;
+      if(!ing||!rec)continue;
+      if(!map[ing.id])map[ing.id]={name:ing.name,recipes:{}};
+      map[ing.id].recipes[rec.id]=rec.name;
+    }
+    const sorted=Object.values(map).sort((a,b)=>Object.keys(b.recipes).length-Object.keys(a.recipes).length);
+    if(!sorted.length){c.innerHTML='<div class="empty"><h3>No data yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>';return;}
+    const shared=sorted.filter(x=>Object.keys(x.recipes).length>1);
+    const single=sorted.filter(x=>Object.keys(x.recipes).length===1);
+    let html='';
+    if(shared.length){
+      html+='<div class="section-label">Shared across recipes</div>';
+      html+=shared.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+    }
+    if(single.length){
+      html+='<div class="section-label" style="margin-top:16px">Used in one recipe</div>';
+      html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+    }
+    c.innerHTML=html;
+  } catch(e){ c.innerHTML='<p>Error loading.</p>'; }
+}
+
+async function viewRecipe(id){
+  S.viewingRecipe=S.recipes.find(r=>r.id===id);
+  render();
+}
+
+async function renderDetail(){
+  const c=document.getElementById('content');
+  const r=S.viewingRecipe;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
+  const [steps,ings]=await Promise.all([
+    db.get(`recipe_steps?recipe_id=eq.${r.id}&order=step_number`),
+    db.get(`recipe_ingredients?recipe_id=eq.${r.id}&select=id,quantity,or_group,units(abbreviation),ingredient_master(id,name)`)
+  ]);
+  const solo=ings.filter(i=>i.or_group==null);
+  const groups={};
+  for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
+  const ingHtml=[
+    ...solo.map(i=>`<div class="ing-row"><span class="ing-qty">${fmtQty(i.quantity,i.units)}</span><span>${esc(i.ingredient_master.name)}</span></div>`),
+    ...Object.values(groups).map(grp=>`<div class="ing-row" style="flex-direction:column;gap:3px;padding:8px 0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:2px">Choose one:</div>${grp.map(i=>`<div style="display:flex;gap:10px;font-size:14px"><span class="ing-qty">${fmtQty(i.quantity,i.units)}</span><span>${esc(i.ingredient_master.name)}</span><span class="or-badge">or</span></div>`).join('')}</div>`)
   ].join('');
-
-  const stepsHtml = detail.steps.length
-    ? detail.steps.map(s => `<div class="step-row"><div class="step-num">${s.step_number}</div><div>${esc(s.instruction)}</div></div>`).join('')
-    : `<div style="font-size:13px;color:var(--brown-light)">No steps added yet.</div>`;
-
-  const sourceHtml = r.source
-    ? (r.source.startsWith('http') ? `<a href="${esc(r.source)}" target="_blank" class="source-link">${esc(r.source)}</a>` : `<span class="source-text">${esc(r.source)}</span>`)
-    : `<span style="color:var(--brown-light);font-size:14px">—</span>`;
-
-  c.innerHTML = `
+  const stepsHtml=steps.length?steps.map(s=>`<div class="step-row"><div class="step-num">${s.step_number}</div><div>${esc(s.instruction)}</div></div>`).join(''):'<div style="font-size:13px;color:var(--brown-light)">No steps added.</div>';
+  const sourceHtml=r.source?(r.source.startsWith('http')?`<a href="${esc(r.source)}" target="_blank" style="color:var(--accent);font-size:14px;word-break:break-all">${esc(r.source)}</a>`:`<span style="font-size:14px">${esc(r.source)}</span>`):'<span style="font-size:13px;color:var(--brown-light)">—</span>';
+  c.innerHTML=`
     <div class="detail-actions">
-      <button class="btn btn-sm" onclick="openEditRecipe('${r.id}')">Edit Recipe</button>
+      <button class="btn btn-sm" onclick="openEditRecipe('${r.id}')">Edit</button>
       <button class="btn btn-sm btn-danger" onclick="confirmDelete('${r.id}')">Delete</button>
     </div>
-
-    <div class="detail-section">
-      <div class="detail-section-header"><h4>Source</h4></div>
-      <div class="detail-section-body">${sourceHtml}</div>
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-header"><h4>Ingredients</h4></div>
-      <div class="detail-section-body" style="padding:0 18px">${ingHtml || '<div style="font-size:13px;color:var(--brown-light);padding:14px 0">No ingredients added yet.</div>'}</div>
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-header"><h4>Steps</h4></div>
-      <div class="detail-section-body">${stepsHtml}</div>
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-header"><h4>Notes & variations</h4></div>
-      <div class="detail-section-body">
-        ${r.notes ? `<div class="notes-text">${esc(r.notes)}</div>` : `<div class="notes-empty">No notes yet.</div>`}
-      </div>
-    </div>`;
+    <div class="detail-section"><div class="detail-section-header"><h4>Source${r.serves?' &nbsp;·&nbsp; Serves '+esc(r.serves):''}</h4></div><div class="detail-section-body">${sourceHtml}</div></div>
+    <div class="detail-section"><div class="detail-section-header"><h4>Ingredients</h4></div><div class="detail-section-body" style="padding:0 16px">${ingHtml||'<div style="font-size:13px;color:var(--brown-light);padding:12px 0">None added.</div>'}</div></div>
+    <div class="detail-section"><div class="detail-section-header"><h4>Program</h4></div><div class="detail-section-body">${stepsHtml}</div></div>
+    <div class="detail-section"><div class="detail-section-header"><h4>Notes & variations</h4></div><div class="detail-section-body">${r.notes?`<div class="notes-text">${esc(r.notes)}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No notes yet.</div>'}</div></div>`;
 }
 
-async function renderXref(c) {
-  c.innerHTML = `<div class="loading"><div class="spinner"></div>Loading...</div>`;
+// ---- Add Ingredient (standalone) ----
+function openAddIngredient(){
+  openModal(`
+    <div class="modal-header"><div class="modal-title">New ingredient</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="ai-name" placeholder="e.g. Unsalted butter"></div>
+      <div class="field"><label>Type</label><select id="ai-type"><option value="">— select —</option>${S.types.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewIngredient()">Save ingredient</button>
+    </div>`);
+}
+
+async function saveNewIngredient(name, typeId){
+  name = name || document.getElementById('ai-name')?.value.trim();
+  typeId = typeId || document.getElementById('ai-type')?.value;
+  if(!name){ toast('Name required'); return null; }
   try {
-    const rows = await db.get(`recipe_ingredients?select=ingredient_master(id,name),recipes(id,name)`);
-    const map = {};
-    for (const row of rows) {
-      const ing = row.ingredient_master;
-      const rec = row.recipes;
-      if (!ing || !rec) continue;
-      if (!map[ing.id]) map[ing.id] = { name: ing.name, recipes: {} };
-      map[ing.id].recipes[rec.id] = rec.name;
-    }
-    const sorted = Object.values(map).sort((a,b) => Object.keys(b.recipes).length - Object.keys(a.recipes).length);
-    if (!sorted.length) { c.innerHTML = `<div class="empty"><div class="empty-icon">🧅</div><h3>No ingredients yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>`; return; }
-
-    const shared = sorted.filter(x => Object.keys(x.recipes).length > 1);
-    const single = sorted.filter(x => Object.keys(x.recipes).length === 1);
-
-    let html = '';
-    if (shared.length) {
-      html += `<div class="section-label">Used in multiple recipes</div>`;
-      html += shared.map(x => `
-        <div class="xref-card">
-          <div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>
-          ${Object.values(x.recipes).map(rn => `<div class="xref-row"><span class="xref-recipe">${esc(rn)}</span></div>`).join('')}
-        </div>`).join('');
-    }
-    if (single.length) {
-      html += `<div class="section-label">Used in one recipe</div>`;
-      html += single.map(x => `
-        <div class="xref-card">
-          <div class="xref-header">${esc(x.name)}</div>
-          ${Object.values(x.recipes).map(rn => `<div class="xref-row"><span class="xref-recipe">${esc(rn)}</span></div>`).join('')}
-        </div>`).join('');
-    }
-    c.innerHTML = html;
-  } catch(e) { c.innerHTML = `<p>Error loading ingredients.</p>`; }
+    const [created]=await db.post('ingredient_master',{name,type_id:typeId||null});
+    S.ingredients.push(created); S.ingredients.sort((a,b)=>a.name.localeCompare(b.name));
+    toast(`"${name}" added`);
+    closeModal(); renderIngredientList();
+    return created;
+  } catch(e){ toast('Error — ingredient may already exist'); return null; }
 }
 
-// Navigation
-function switchTab(tab) {
-  state.tab = tab;
-  state.viewingRecipe = null;
-  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', (tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)));
-  render();
-}
+// ---- Recipe Modal (Add/Edit) — stable form state ----
+let FM = {}; // form model, stable across re-renders
 
-async function viewRecipe(id) {
-  const r = state.recipes.find(x => x.id === id);
-  state.viewingRecipe = r;
-  render();
-}
+function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],steps:[''],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
 
-function goBack() {
-  state.viewingRecipe = null;
-  render();
-}
-
-// Escape HTML
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// Modal helpers
-function openModal(html) { document.getElementById('modal-root').innerHTML = html; }
-function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
-
-// ---- Add/Edit Recipe Modal ----
-function buildUnitOptions(selectedId) {
-  const groups = { 'Volume (English)': [], 'Volume (Metric)': [], 'Weight (English)': [], 'Weight (Metric)': [] };
-  for (const u of state.units) {
-    const key = `${u.type.charAt(0).toUpperCase()+u.type.slice(1)} (${u.system.charAt(0).toUpperCase()+u.system.slice(1)})`;
-    if (groups[key]) groups[key].push(u);
-  }
-  let opts = `<option value="">count</option>`;
-  for (const [grp, units] of Object.entries(groups)) {
-    if (!units.length) continue;
-    opts += `<optgroup label="${grp}">`;
-    opts += units.map(u => `<option value="${u.id}"${u.id==selectedId?' selected':''}>${u.name} (${u.abbreviation})</option>`).join('');
-    opts += `</optgroup>`;
-  }
-  return opts;
-}
-
-function buildIngOptions(selectedId) {
-  return state.allIngredients.map(i => `<option value="${i.id}"${i.id===selectedId?' selected':''}>${esc(i.name)}</option>`).join('');
-}
-
-function openAddRecipe() { openRecipeModal(null); }
-async function openEditRecipe(id) {
-  const r = state.recipes.find(x => x.id === id);
-  const detail = await loadRecipeDetail(id);
-  openRecipeModal(r, detail);
-}
-
-function openRecipeModal(recipe, detail) {
-  // Build form state
-  const isEdit = !!recipe;
-  let formSteps = detail ? detail.steps.map(s => s.instruction) : [''];
-  if (!formSteps.length) formSteps = [''];
-
-  let formIngs = detail ? detail.ingredients.map(i => ({
-    id: i.id,
-    ingredient_id: i.ingredient_master.id,
-    quantity: i.quantity || '',
-    unit_id: i.units ? state.units.find(u=>u.abbreviation===i.units.abbreviation)?.id||'' : '',
-    or_group: i.or_group != null ? String(i.or_group) : ''
-  })) : [{ ingredient_id: '', quantity: '', unit_id: '', or_group: '' }];
-  if (!formIngs.length) formIngs = [{ ingredient_id: '', quantity: '', unit_id: '', or_group: '' }];
-
-  let newIngName = '';
-  let newIngTypeId = '';
-
-  function ingRowHtml(ing, idx) {
-    return `<div class="ing-builder-row" id="ing-row-${idx}">
-      <select onchange="formIngs[${idx}].ingredient_id=this.value">
-        <option value="">— select —</option>
-        ${buildIngOptions(ing.ingredient_id)}
-      </select>
-      <input type="number" step="any" placeholder="qty" value="${esc(String(ing.quantity))}" oninput="formIngs[${idx}].quantity=this.value" style="border-radius:0">
-      <select onchange="formIngs[${idx}].unit_id=this.value" style="border-radius:0">${buildUnitOptions(ing.unit_id)}</select>
-      <button class="del-btn" onclick="removeIng(${idx})" aria-label="Remove">&#10005;</button>
-    </div>`;
-  }
-
-  function stepRowHtml(step, idx) {
-    return `<div class="step-builder-row">
-      <div class="step-builder-num">${idx+1}</div>
-      <textarea rows="2" placeholder="Describe this step..." oninput="formSteps[${idx}]=this.value">${esc(step)}</textarea>
-      <button class="btn btn-ghost btn-sm" onclick="removeStep(${idx})" style="margin-top:6px;padding:5px 8px">&#10005;</button>
-    </div>`;
-  }
-
-  function render() {
-    const orGroups = [...new Set(formIngs.map(i=>i.or_group).filter(Boolean))].sort();
-    openModal(`
-      <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-        <div class="modal">
-          <div class="modal-title">${isEdit ? 'Edit Recipe' : 'New Recipe'}</div>
-
-          <div class="field"><label>Recipe name</label>
-            <input id="f-name" placeholder="e.g. Fried Eggs Over Medium" value="${esc(recipe?.name||'')}">
-          </div>
-          <div class="field"><label>Source</label>
-            <input id="f-source" placeholder="URL, book, person..." value="${esc(recipe?.source||'')}">
-          </div>
-
-          <div class="field"><label>Ingredients</label>
-            <div class="ing-builder">
-              <div class="ing-builder-header">
-                <span>Ingredient</span><span>Qty</span><span>Unit</span><span></span>
-              </div>
-              <div id="ing-list">${formIngs.map((ing,i) => ingRowHtml(ing,i)).join('')}</div>
-            </div>
-            <button class="add-link" onclick="addIng()">+ add ingredient</button>
-          </div>
-
-          <div class="field" style="margin-top:4px">
-            <label>Or-groups <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">(same number = interchangeable swap)</span></label>
-            <div style="display:grid;grid-template-columns:1fr 70px 90px 28px;gap:0;font-size:12px;color:var(--brown-light);padding:2px 0 6px">
-              <span style="padding:0 10px">Or-group# on each ingredient row:</span>
-            </div>
-            ${formIngs.map((ing,idx) => ing.or_group !== undefined ? `
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px">
-                <span style="flex:1;color:var(--brown-light)">${state.allIngredients.find(a=>a.id===ing.ingredient_id)?.name||'ingredient '+(idx+1)}</span>
-                <input type="number" min="1" placeholder="group#" value="${esc(ing.or_group)}" oninput="formIngs[${idx}].or_group=this.value" style="width:70px;padding:5px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown)">
-              </div>` : '').join('')}
-          </div>
-
-          <div class="field"><label>Steps</label>
-            <div id="steps-list">${formSteps.map((s,i) => stepRowHtml(s,i)).join('')}</div>
-            <button class="add-link" onclick="addStep()">+ add step</button>
-          </div>
-
-          <div class="field"><label>Notes & variations</label>
-            <textarea id="f-notes" placeholder="Tips, variations, memories...">${esc(recipe?.notes||'')}</textarea>
-          </div>
-
-          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
-            <div style="font-size:13px;font-weight:500;margin-bottom:10px;color:var(--brown)">Add new ingredient to master list</div>
-            <div style="display:grid;grid-template-columns:1fr 140px;gap:8px">
-              <input id="new-ing-name" placeholder="Ingredient name" oninput="newIngName=this.value" style="padding:8px 10px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none">
-              <select id="new-ing-type" onchange="newIngTypeId=this.value" style="padding:8px 10px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
-                <option value="">Type...</option>
-                ${state.ingredientTypes.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
-              </select>
-            </div>
-            <button class="add-link" style="margin-top:6px" onclick="addNewIngredient()">+ create ingredient</button>
-          </div>
-
-          <div class="modal-actions">
-            <button class="btn" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveRecipe('${recipe?.id||''}')">${isEdit?'Save changes':'Add recipe'}</button>
-          </div>
-        </div>
-      </div>`);
-  }
-
-  window.formIngs = formIngs;
-  window.formSteps = formSteps;
-  window.newIngName = newIngName;
-  window.newIngTypeId = newIngTypeId;
-
-  window.addIng = () => { formIngs.push({ ingredient_id:'', quantity:'', unit_id:'', or_group:'' }); render(); };
-  window.removeIng = (i) => { formIngs.splice(i,1); if(!formIngs.length) formIngs.push({ingredient_id:'',quantity:'',unit_id:'',or_group:''}); render(); };
-  window.addStep = () => { formSteps.push(''); render(); };
-  window.removeStep = (i) => { formSteps.splice(i,1); if(!formSteps.length) formSteps.push(''); render(); };
-
-  window.addNewIngredient = async () => {
-    const name = document.getElementById('new-ing-name').value.trim();
-    const typeId = document.getElementById('new-ing-type').value;
-    if (!name) { toast('Enter an ingredient name'); return; }
-    try {
-      const [created] = await db.post('ingredient_master', { name, type_id: typeId || null });
-      state.allIngredients.push(created);
-      state.allIngredients.sort((a,b)=>a.name.localeCompare(b.name));
-      toast(`Added "${name}" to ingredients`);
-      render();
-    } catch(e) { toast('Error: ingredient may already exist'); }
+async function openEditRecipe(id){
+  const r=S.recipes.find(x=>x.id===id);
+  const [steps,ings]=await Promise.all([
+    db.get(`recipe_steps?recipe_id=eq.${id}&order=step_number`),
+    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,ingredient_master(id,name)`)
+  ]);
+  FM={
+    name:r.name||'', source:r.source||'', serves:r.serves||'', notes:r.notes||'',
+    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
+    steps: steps.length ? steps.map(s=>s.instruction) : [''],
+    showNewIng:false, newIngName:'', newIngTypeId:''
   };
-
-  render();
+  openRecipeModal(id);
 }
 
-window.saveRecipe = async (existingId) => {
-  const name = document.getElementById('f-name').value.trim();
-  if (!name) { toast('Recipe name is required'); return; }
-  const source = document.getElementById('f-source').value.trim();
-  const notes = document.getElementById('f-notes').value.trim();
+function openRecipeModal(editId){
+  renderRecipeModal(editId);
+}
 
-  try {
-    let recipeId = existingId;
-    if (existingId) {
-      await db.patch(`recipes?id=eq.${existingId}`, { name, source: source||null, notes: notes||null });
+function renderRecipeModal(editId){
+  const isEdit=!!editId;
+  openModal(`
+    <div class="modal-header">
+      <div class="modal-title">${isEdit?'Edit recipe':'New recipe'}</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Recipe name</label><input id="fm-name" value="${esc(FM.name)}" placeholder="e.g. Grandma's Stuffing" oninput="FM.name=this.value"></div>
+      <div class="row2">
+        <div class="field"><label>Source</label><input id="fm-source" value="${esc(FM.source)}" placeholder="URL, book, person..." oninput="FM.source=this.value"></div>
+        <div class="field"><label>Serves</label><input id="fm-serves" value="${esc(FM.serves)}" placeholder="e.g. 4 or 6–8" oninput="FM.serves=this.value"></div>
+      </div>
+
+      <div class="section-label">Ingredients</div>
+      <div class="ing-build-wrap">
+        <div class="ing-build-header"><span>Ingredient</span><span>Qty</span><span>Unit</span><span></span></div>
+        <div id="ing-list">${FM.ings.map((ing,i)=>ingRowHtml(ing,i)).join('')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <button class="add-link" onclick="addIngRow()">+ add ingredient</button>
+        <button class="add-link" onclick="toggleNewIng()">+ create new ingredient</button>
+      </div>
+      ${FM.showNewIng?`<div class="new-ing-form">
+        <div class="row"><input id="ni-name" placeholder="Ingredient name" value="${esc(FM.newIngName)}" oninput="FM.newIngName=this.value"><select id="ni-type" onchange="FM.newIngTypeId=this.value"><option value="">Type...</option>${S.types.map(t=>`<option value="${t.id}"${t.id==FM.newIngTypeId?' selected':''}>${t.name}</option>`).join('')}</select></div>
+        <button class="btn btn-sm btn-primary" onclick="createIngInline()">Create ingredient</button>
+      </div>`:''}
+
+      <div style="margin-top:6px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--brown-light);margin-bottom:6px">Or-groups <span style="font-weight:400;text-transform:none;letter-spacing:0">(same # = swappable alternatives)</span></div>
+        ${FM.ings.map((ing,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:13px"><span style="flex:1;color:var(--brown-light)">${esc(ing.ingName||('Row '+(i+1)))}</span><input type="number" min="1" placeholder="group#" value="${esc(ing.orGroup)}" oninput="FM.ings[${i}].orGroup=this.value" style="width:68px;padding:5px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;font-family:'DM Sans',sans-serif"></div>`).join('')}
+      </div>
+
+      <div class="section-label">Program (steps)</div>
+      <div id="steps-list">${FM.steps.map((s,i)=>stepRowHtml(s,i)).join('')}</div>
+      <button class="add-link" onclick="addStepRow()">+ add step</button>
+
+      <div class="section-label" style="margin-top:16px">Notes & variations</div>
+      <div class="field"><textarea id="fm-notes" placeholder="Tips, variations, memories..." oninput="FM.notes=this.value">${esc(FM.notes)}</textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRecipe('${editId||''}')">${isEdit?'Save changes':'Add recipe'}</button>
+    </div>`);
+  attachIngDropdowns();
+}
+
+function ingRowHtml(ing,i){
+  return `<div class="ing-build-row" id="ir-${i}">
+    <div class="ing-search-wrap">
+      <input class="ing-search-input" id="is-${i}" placeholder="Search ingredient..." value="${esc(ing.ingName)}" oninput="handleIngSearch(${i},this.value)" onfocus="showIngDrop(${i})" autocomplete="off">
+      <div class="ing-dropdown" id="id-${i}" style="display:none"></div>
+    </div>
+    <input type="number" step="any" placeholder="qty" value="${esc(ing.qty)}" oninput="FM.ings[${i}].qty=this.value" style="border-right:1px solid var(--border)">
+    <select onchange="FM.ings[${i}].unitId=this.value" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
+    <button class="del-btn" onclick="removeIngRow(${i})">&#10005;</button>
+  </div>`;
+}
+
+function stepRowHtml(s,i){
+  return `<div class="step-build-row"><div class="step-build-num">${i+1}</div><textarea rows="2" placeholder="Describe step ${i+1}..." oninput="FM.steps[${i}]=this.value">${esc(s)}</textarea><button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button></div>`;
+}
+
+function buildUnitOpts(selId){
+  const grps={'Volume – English':[],'Volume – Metric':[],'Weight – English':[],'Weight – Metric':[]};
+  for(const u of S.units){
+    const k=`${u.type==='volume'?'Volume':'Weight'} – ${u.system==='english'?'English':'Metric'}`;
+    if(grps[k])grps[k].push(u);
+  }
+  let o=`<option value="">count</option>`;
+  for(const[g,us]of Object.entries(grps)){
+    if(!us.length)continue;
+    o+=`<optgroup label="${g}">${us.map(u=>`<option value="${u.id}"${u.id==selId?' selected':''}>${u.name} (${u.abbreviation})</option>`).join('')}</optgroup>`;
+  }
+  return o;
+}
+
+function attachIngDropdowns(){
+  FM.ings.forEach((_,i)=>{
+    const input=document.getElementById(`is-${i}`);
+    const drop=document.getElementById(`id-${i}`);
+    if(!input||!drop)return;
+    document.addEventListener('click', function handler(e){
+      if(!input.contains(e.target)&&!drop.contains(e.target)){ drop.style.display='none'; document.removeEventListener('click',handler); }
+    });
+  });
+}
+
+function handleIngSearch(i, val){
+  FM.ings[i].ingName=val;
+  if(!val){ document.getElementById(`id-${i}`).style.display='none'; return; }
+  showIngDrop(i);
+}
+
+function showIngDrop(i){
+  const drop=document.getElementById(`id-${i}`);
+  if(!drop)return;
+  const q=(FM.ings[i].ingName||'').toLowerCase();
+  const filtered=q?S.ingredients.filter(x=>x.name.toLowerCase().includes(q)):S.ingredients.slice(0,12);
+  drop.innerHTML=[
+    ...filtered.map(x=>`<div class="ing-dropdown-item" onclick="selectIng(${i},'${x.id}','${esc(x.name)}')">${esc(x.name)}</div>`),
+    `<div class="ing-dropdown-item create" onclick="quickCreateIng(${i})">+ Create "${esc(FM.ings[i].ingName||'new')}"</div>`
+  ].join('');
+  drop.style.display=filtered.length||FM.ings[i].ingName?'':'none';
+  drop.style.display='block';
+}
+
+function selectIng(i,id,name){
+  FM.ings[i].ingId=id; FM.ings[i].ingName=name;
+  const input=document.getElementById(`is-${i}`);
+  const drop=document.getElementById(`id-${i}`);
+  if(input)input.value=name;
+  if(drop)drop.style.display='none';
+}
+
+async function quickCreateIng(i){
+  const name=FM.ings[i].ingName.trim();
+  if(!name)return;
+  try{
+    const[created]=await db.post('ingredient_master',{name,type_id:null});
+    S.ingredients.push(created); S.ingredients.sort((a,b)=>a.name.localeCompare(b.name));
+    FM.ings[i].ingId=created.id; FM.ings[i].ingName=created.name;
+    toast(`"${name}" created`);
+    const input=document.getElementById(`is-${i}`);
+    const drop=document.getElementById(`id-${i}`);
+    if(input)input.value=name;
+    if(drop)drop.style.display='none';
+  }catch(e){ toast('Error creating ingredient'); }
+}
+
+function addIngRow(){ FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
+function removeIngRow(i){ FM.ings.splice(i,1); if(!FM.ings.length)FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
+function addStepRow(){ FM.steps.push(''); rerenderStepList(); }
+function removeStepRow(i){ FM.steps.splice(i,1); if(!FM.steps.length)FM.steps.push(''); rerenderStepList(); }
+
+function rerenderIngList(){
+  const el=document.getElementById('ing-list');
+  if(el){ el.innerHTML=FM.ings.map((ing,i)=>ingRowHtml(ing,i)).join(''); attachIngDropdowns(); }
+}
+function rerenderStepList(){
+  const el=document.getElementById('steps-list');
+  if(el) el.innerHTML=FM.steps.map((s,i)=>stepRowHtml(s,i)).join('');
+}
+
+function toggleNewIng(){ FM.showNewIng=!FM.showNewIng; syncFMFromDOM(); const editId=document.querySelector('[onclick^="saveRecipe"]')?.getAttribute('onclick')?.match(/'([^']*)'/)?.[1]||''; renderRecipeModal(editId); }
+
+async function createIngInline(){
+  const name=document.getElementById('ni-name')?.value.trim()||FM.newIngName.trim();
+  const typeId=document.getElementById('ni-type')?.value||FM.newIngTypeId;
+  if(!name){ toast('Name required'); return; }
+  try{
+    const[created]=await db.post('ingredient_master',{name,type_id:typeId||null});
+    S.ingredients.push(created); S.ingredients.sort((a,b)=>a.name.localeCompare(b.name));
+    FM.showNewIng=false; FM.newIngName=''; FM.newIngTypeId='';
+    toast(`"${name}" added to ingredients`);
+    const editId=document.querySelector('[onclick^="saveRecipe"]')?.getAttribute('onclick')?.match(/'([^']*)'/)?.[1]||'';
+    renderRecipeModal(editId);
+  }catch(e){ toast('Error — may already exist'); }
+}
+
+function syncFMFromDOM(){
+  const n=document.getElementById('fm-name'); if(n)FM.name=n.value;
+  const s=document.getElementById('fm-source'); if(s)FM.source=s.value;
+  const sv=document.getElementById('fm-serves'); if(sv)FM.serves=sv.value;
+  const nt=document.getElementById('fm-notes'); if(nt)FM.notes=nt.value;
+  document.querySelectorAll('[id^="is-"]').forEach(el=>{ const i=parseInt(el.id.slice(3)); if(FM.ings[i])FM.ings[i].ingName=el.value; });
+  document.querySelectorAll('#steps-list textarea').forEach((el,i)=>{ if(FM.steps[i]!==undefined)FM.steps[i]=el.value; });
+}
+
+async function saveRecipe(editId){
+  syncFMFromDOM();
+  if(!FM.name.trim()){ toast('Recipe name required'); return; }
+  try{
+    let recipeId=editId;
+    const payload={name:FM.name.trim(),source:FM.source.trim()||null,serves:FM.serves.trim()||null,notes:FM.notes.trim()||null};
+    if(editId){
+      await db.patch(`recipes?id=eq.${editId}`,payload);
     } else {
-      const [r] = await db.post('recipes', { name, source: source||null, notes: notes||null });
-      recipeId = r.id;
+      const[r]=await db.post('recipes',payload);
+      recipeId=r.id;
     }
+    if(editId) await db.del(`recipe_steps?recipe_id=eq.${editId}`);
+    const validSteps=FM.steps.map((s,i)=>s.trim()).filter(Boolean).map((inst,i)=>({recipe_id:recipeId,step_number:i+1,instruction:inst}));
+    if(validSteps.length) await db.post('recipe_steps',validSteps);
+    if(editId) await db.del(`recipe_ingredients?recipe_id=eq.${editId}`);
+    const validIngs=FM.ings.filter(i=>i.ingId).map(i=>({recipe_id:recipeId,ingredient_id:i.ingId,quantity:i.qty!==''?Number(i.qty):null,unit_id:i.unitId||null,or_group:i.orGroup!==''?Number(i.orGroup):null}));
+    if(validIngs.length) await db.post('recipe_ingredients',validIngs);
+    S.recipes=await db.get('recipes?order=name&select=id,name,source,notes,serves,created_at');
+    if(editId){ S.viewingRecipe=S.recipes.find(r=>r.id===editId); }
+    closeModal(); toast(editId?'Recipe updated!':'Recipe added!'); render();
+  }catch(e){ toast('Error saving: '+e.message); }
+}
 
-    // Steps: delete existing, re-insert
-    if (existingId) await db.delete(`recipe_steps?recipe_id=eq.${existingId}`);
-    const validSteps = window.formSteps.map((s,i)=>({recipe_id:recipeId,step_number:i+1,instruction:s.trim()})).filter(s=>s.instruction);
-    if (validSteps.length) await db.post('recipe_steps', validSteps);
+async function confirmDelete(id){
+  if(!confirm('Delete this recipe? Cannot be undone.'))return;
+  try{ await db.del(`recipes?id=eq.${id}`); S.recipes=S.recipes.filter(r=>r.id!==id); S.viewingRecipe=null; toast('Deleted'); render(); }
+  catch(e){ toast('Error deleting'); }
+}
 
-    // Ingredients: delete existing, re-insert
-    if (existingId) await db.delete(`recipe_ingredients?recipe_id=eq.${existingId}`);
-    const validIngs = window.formIngs.filter(i=>i.ingredient_id).map(i=>({
-      recipe_id: recipeId,
-      ingredient_id: i.ingredient_id,
-      quantity: i.quantity !== '' ? Number(i.quantity) : null,
-      unit_id: i.unit_id || null,
-      or_group: i.or_group !== '' ? Number(i.or_group) : null
-    }));
-    if (validIngs.length) await db.post('recipe_ingredients', validIngs);
+function openModal(html){ document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`; }
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
 
-    await loadRecipes();
-    if (existingId) {
-      state.viewingRecipe = state.recipes.find(r=>r.id===existingId);
-    }
-    closeModal();
-    toast(existingId ? 'Recipe updated!' : 'Recipe added!');
-    render();
-  } catch(e) { toast('Error saving recipe: ' + e.message); }
-};
-
-window.confirmDelete = async (id) => {
-  if (!confirm('Delete this recipe? This cannot be undone.')) return;
-  try {
-    await db.delete(`recipes?id=eq.${id}`);
-    state.recipes = state.recipes.filter(r=>r.id!==id);
-    state.viewingRecipe = null;
-    toast('Recipe deleted');
-    render();
-  } catch(e) { toast('Error deleting recipe'); }
-};
+// Add serves column if missing
+async function ensureServesColumn(){
+  try{ await db.get('recipes?select=serves&limit=1'); }
+  catch(e){
+    // column doesn't exist yet — user needs to add it via SQL
+    console.log('serves column may not exist');
+  }
+}
 
 init();
-</script>
-</body>
-</html>
-
