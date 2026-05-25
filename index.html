@@ -435,6 +435,7 @@ function renderRecipeModal(editId){
       <button class="btn btn-primary" onclick="saveRecipe('${editId||''}')">${isEdit?'Save changes':'Add recipe'}</button>
     </div>`);
   attachIngDropdowns();
+  attachStepListeners();
 }
 
 function ingRowHtml(ing,i){
@@ -450,6 +451,21 @@ function ingRowHtml(ing,i){
     <select id="iu-${i}" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
     <button class="del-btn" onclick="removeIngRow(${i})">&#10005;</button>
   </div>`;
+}
+
+function stepRowHtml(s,i){
+  return `<div class="step-build-row"><div class="step-build-num">${i+1}</div><textarea rows="2" placeholder="Describe step ${i+1}..." id="st-${i}">${esc(s)}</textarea><button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button></div>`;
+}
+
+function parseFraction(s){
+  if(!s||!String(s).trim())return null;
+  s=String(s).trim();
+  if(!isNaN(s))return Math.max(0,Number(s));
+  const mixed=s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if(mixed)return Math.max(0,parseInt(mixed[1])+parseInt(mixed[2])/parseInt(mixed[3]));
+  const frac=s.match(/^(\d+)\/(\d+)$/);
+  if(frac)return Math.max(0,parseInt(frac[1])/parseInt(frac[2]));
+  return null;
 }
 
 function buildUnitOpts(selId){
@@ -541,7 +557,14 @@ function rerenderIngList(){
 }
 function rerenderStepList(){
   const el=document.getElementById('steps-list');
-  if(el) el.innerHTML=FM.steps.map((s,i)=>stepRowHtml(s,i)).join('');
+  if(el){ el.innerHTML=FM.steps.map((s,i)=>stepRowHtml(s,i)).join(''); attachStepListeners(); }
+}
+
+function attachStepListeners(){
+  FM.steps.forEach((_,i)=>{
+    const ta=document.getElementById(`st-${i}`);
+    if(ta) ta.addEventListener('input',()=>{ FM.steps[i]=ta.value; });
+  });
 }
 
 function toggleNewIng(){ FM.showNewIng=!FM.showNewIng; syncFMFromDOM(); const editId=document.querySelector('[onclick^="saveRecipe"]')?.getAttribute('onclick')?.match(/'([^']*)'/)?.[1]||''; renderRecipeModal(editId); }
