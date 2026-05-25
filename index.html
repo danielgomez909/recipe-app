@@ -452,6 +452,20 @@ function ingRowHtml(ing,i){
   </div>`;
 }
 
+function buildUnitOpts(selId){
+  const grps={'Volume – English':[],'Volume – Metric':[],'Weight – English':[],'Weight – Metric':[]};
+  for(const u of S.units){
+    const k=`${u.type==='volume'?'Volume':'Weight'} – ${u.system==='english'?'English':'Metric'}`;
+    if(grps[k])grps[k].push(u);
+  }
+  let o=`<option value="">count</option>`;
+  for(const[g,us]of Object.entries(grps)){
+    if(!us.length)continue;
+    o+=`<optgroup label="${g}">${us.map(u=>`<option value="${u.id}"${u.id==selId?' selected':''}>${u.name} (${u.abbreviation})</option>`).join('')}</optgroup>`;
+  }
+  return o;
+}
+
 function attachIngDropdowns(){
   FM.ings.forEach((_,i)=>{
     const input=document.getElementById(`is-${i}`);
