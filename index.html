@@ -129,7 +129,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 <div class="app">
   <div class="topbar">
     <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Back">&#8592;</button>
-    <div class="topbar-title" id="topbar-title">Decent Eats<a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">i</a></div>
+    <div class="topbar-title" id="topbar-title">Decent Eats</div>
     <button class="btn btn-sm btn-primary" id="add-btn" onclick="openAddRecipe()">+ Recipe</button>
   </div>
   <div class="nav" id="main-nav">
@@ -167,6 +167,8 @@ const db = {
 };
 
 function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+const INFO_BTN = '<a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">i</a>';
+function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + INFO_BTN; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function toFraction(d){
   if(d==null)return''; d=Number(d); if(Number.isInteger(d))return String(d);
@@ -208,11 +210,11 @@ function render(){
   if(S.viewingRecipe){
     backBtn.style.display=''; addBtn.style.display='none';
     nav.style.display='none'; searchBar.style.display='none';
-    document.getElementById('topbar-title').textContent=S.viewingRecipe.name;
+    setTitle(S.viewingRecipe.name);
     renderDetail(); return;
   }
   backBtn.style.display='none'; nav.style.display='';
-  document.getElementById('topbar-title').textContent='Decent Eats';
+  setTitle('Decent Eats');
 
   if(S.tab==='recipes'){
     addBtn.style.display=''; addBtn.textContent='+ Recipe';
