@@ -289,6 +289,17 @@
     <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Cross-ref compound search — search for recipes that share multiple specific ingredients</span></div>
   </div>
 
+  <h3>UX improvements</h3>
+  <div class="backlog-section">
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">ⓘ button styling — refine to true superscript appearance next to title (low priority)</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Tag chips on recipe detail — clicking a tag navigates to Tag Search subtab filtered to that tag</span></div>
+  </div>
+
+  <h3>Security</h3>
+  <div class="backlog-section">
+    <div class="backlog-item"><span class="backlog-tag tag-data">Security</span><span class="backlog-text">Add Supabase Row Level Security (RLS) + basic authentication so the anon key in index.html is not a security exposure</span></div>
+  </div>
+
   <h3>Data &amp; import</h3>
   <div class="backlog-section">
     <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Import recipe from a website URL — paste a link and have the app parse and pre-fill the recipe form</span></div>
@@ -296,12 +307,28 @@
     <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Bulk load recipes from a file (provide a template with the required columns)</span></div>
   </div>
 
+  <h2>Database Schema — Additional Tables</h2>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">tags</span><span class="schema-table-desc">Master list of tags — extensible, will support tagging beyond recipes in future</span></div>
+    <div class="schema-row"><span class="schema-col">id<span class="pk">PK</span></span><span class="schema-type">serial</span><span class="schema-desc">Auto-incrementing integer</span></div>
+    <div class="schema-row"><span class="schema-col">name</span><span class="schema-type">text</span><span class="schema-desc">Unique tag name</span></div>
+    <div class="schema-row"><span class="schema-col">created_at</span><span class="schema-type">timestamptz</span><span class="schema-desc">Auto-set on insert</span></div>
+  </div>
+
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">recipe_tags</span><span class="schema-table-desc">Junction — links recipes to tags (composite primary key)</span></div>
+    <div class="schema-row"><span class="schema-col">recipe_id<span class="fk">FK</span></span><span class="schema-type">uuid</span><span class="schema-desc">References recipes.id — cascades on delete</span></div>
+    <div class="schema-row"><span class="schema-col">tag_id<span class="fk">FK</span></span><span class="schema-type">int</span><span class="schema-desc">References tags.id — cascades on delete</span></div>
+  </div>
+
   <h2>Version History</h2>
   <table>
     <tr><th>Date</th><th>Summary</th></tr>
-    <tr><td>May 24, 2026</td><td>Initial build — Supabase schema, single HTML app, Vercel deployment, GitHub Desktop workflow established. Core features: recipe CRUD, ingredient master + junction table, or-groups, recipe steps, notes, serves field, ingredient cross-reference tab, recipe and ingredient search.</td></tr>
-    <tr><td>May 24, 2026</td><td>Bug fixes — form reset on ingredient/step add resolved via FM object pattern. Ingredient dropdown clipping fixed (overflow:visible). Dropdown focus/blur stabilized via addEventListener + 300ms blur timeout + onmousedown preventDefault. Fraction input support added (1/2, 1 1/4). Pinch unit added to units table.</td></tr>
-    <tr><td>June 2026</td><td>Added .vercelignore to exclude reference doc from public deployment. Created app-building-with-dan-gomez skill file. Added ⓘ in-app reference button to topbar. Updated backlog with: checklist mode, recipe scaling, wake lock, video link, equipment field, editable step sequence numbers.</td></tr>
+    <tr><td>May 24, 2026</td><td>Initial build — Supabase schema, single HTML app, Vercel deployment, GitHub Desktop workflow. Core features: recipe CRUD, ingredient master + junction table, or-groups, steps, notes, serves, ingredient cross-reference, search.</td></tr>
+    <tr><td>May 24, 2026</td><td>Bug fixes — form reset resolved via FM object pattern. Ingredient dropdown clipping fixed. Dropdown focus/blur stabilized. Fraction input support. Pinch unit added.</td></tr>
+    <tr><td>June 2026</td><td>Added .vercelignore, reference doc, in-app ⓘ button, wake lock, editable step sequence numbers, auto-select ingredient on exact match, limited initial dropdown to 8 items.</td></tr>
+    <tr><td>June 2026</td><td>Added tagging system — tags table, recipe_tags junction table, Tags tab with Tag List and Tag Search subtabs, tag assignment in recipe form with filter input, tags displayed on recipe detail. Deployment workflow updated to GitHub website approach.</td></tr>
   </table>
 
 </div>
