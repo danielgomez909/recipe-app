@@ -42,9 +42,10 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .sub-nav { display: flex; background: var(--cream2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sub-nav-btn { flex: 1; padding: 8px 4px; font-size: 12px; font-family: 'DM Sans', sans-serif; border: none; background: none; color: var(--brown-light); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
 .sub-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
-.tag-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 9px; border-radius: 20px; background: var(--green-light); color: var(--green); border: 1px solid rgba(74,103,65,0.2); font-weight: 500; cursor: pointer; transition: all .15s; }
-.tag-chip:hover { background: var(--green); color: white; }
-.tag-chip.static { cursor: default; }
+.tag-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 9px; border-radius: 20px; background: var(--cream2); color: var(--brown-light); border: 1px solid var(--border-strong); font-weight: 500; cursor: pointer; transition: all .15s; }
+.tag-chip:hover { background: var(--cream2); color: var(--brown); border-color: var(--brown-light); }
+.tag-chip.active { background: var(--green); color: white; border-color: var(--green); }
+.tag-chip.static { cursor: default; background: var(--green-light); color: var(--green); border-color: rgba(74,103,65,0.2); }
 .tag-chip.static:hover { background: var(--green-light); color: var(--green); }
 .tag-list-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; gap: 10px; }
 .tag-list-row:last-child { border-bottom: none; }
@@ -440,7 +441,7 @@ async function renderDetail(){
   const [steps,ings,recipeTags]=await Promise.all([
     db.get(`recipe_steps?recipe_id=eq.${r.id}&order=step_number`),
     db.get(`recipe_ingredients?recipe_id=eq.${r.id}&select=id,quantity,or_group,units(abbreviation),ingredient_master(id,name)`),
-    db.get(`recipe_tags?recipe_id=eq.${r.id}&select=tag_id,tags(id,name)`)
+    db.get(`recipe_tags?recipe_id=eq.${r.id}&select=tag_id`)
   ]);
   const solo=ings.filter(i=>i.or_group==null);
   const groups={};
@@ -451,7 +452,8 @@ async function renderDetail(){
   ].join('');
   const stepsHtml=steps.length?steps.map(s=>`<div class="step-row"><div class="step-num">${s.step_number}</div><div>${esc(s.instruction)}</div></div>`).join(''):'<div style="font-size:13px;color:var(--brown-light)">No steps added.</div>';
   const sourceHtml=r.source?(r.source.startsWith('http')?`<a href="${esc(r.source)}" target="_blank" style="color:var(--accent);font-size:14px;word-break:break-all">${esc(r.source)}</a>`:`<span style="font-size:14px">${esc(r.source)}</span>`):'<span style="font-size:13px;color:var(--brown-light)">—</span>';
-  const tagsHtml=recipeTags.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${recipeTags.map(rt=>`<span class="tag-chip static">${esc(rt.tags.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
+  const tagNames=recipeTags.map(rt=>S.tags.find(t=>t.id===rt.tag_id)).filter(Boolean);
+  const tagsHtml=tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
   c.innerHTML=`
     <div class="detail-actions">
       <button class="btn btn-sm" onclick="openEditRecipe('${r.id}')">Edit</button>
@@ -513,15 +515,21 @@ async function openEditRecipe(id){
   openRecipeModal(id);
 }
 
+function filterTagChips(val){
+  const q=val.toLowerCase().trim();
+  document.querySelectorAll('#tag-chips .tag-chip').forEach(chip=>{
+    chip.style.display=(!q||chip.dataset.tagName.includes(q))?'':'none';
+  });
+}
+
 function toggleTag(tagId){
   const idx=FM.selectedTags.indexOf(tagId);
   if(idx===-1) FM.selectedTags.push(tagId);
   else FM.selectedTags.splice(idx,1);
-  // re-render just the tags section
-  const container=document.querySelector('.selected-tag')?.closest('div')||document.querySelectorAll('.modal-body .section-label')[document.querySelectorAll('.modal-body .section-label').length-2]?.nextElementSibling;
-  if(container){
-    container.innerHTML=S.tags.map(t=>`<span class="tag-chip${FM.selectedTags.includes(t.id)?' selected-tag':''}" onclick="toggleTag(${t.id})" style="${FM.selectedTags.includes(t.id)?'background:var(--green);color:white;':''}">${esc(t.name)}</span>`).join('');
-  }
+  document.querySelectorAll('#tag-chips .tag-chip').forEach(chip=>{
+    const id=parseInt(chip.getAttribute('onclick').match(/\d+/)[0]);
+    chip.classList.toggle('active', FM.selectedTags.includes(id));
+  });
 }
 
 function openRecipeModal(editId){
@@ -566,10 +574,12 @@ function renderRecipeModal(editId){
       <button class="add-link" onclick="addStepRow()">+ add step</button>
 
       <div class="section-label" style="margin-top:16px">Tags</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-        ${S.tags.map(t=>`<span class="tag-chip${FM.selectedTags.includes(t.id)?' selected-tag':''}" onclick="toggleTag(${t.id})" style="${FM.selectedTags.includes(t.id)?'background:var(--green);color:white;':''}">${esc(t.name)}</span>`).join('')}
-        ${!S.tags.length?'<span style="font-size:13px;color:var(--brown-light)">No tags yet — add some in the Tags tab first.</span>':''}
-      </div>
+      ${S.tags.length?`
+        <input id="tag-filter" placeholder="Filter tags..." oninput="filterTagChips(this.value)" style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;margin-bottom:8px;font-family:'DM Sans',sans-serif">
+        <div id="tag-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+          ${S.tags.map(t=>`<span class="tag-chip${FM.selectedTags.includes(t.id)?' active':''}" data-tag-name="${esc(t.name.toLowerCase())}" onclick="toggleTag(${t.id})">${esc(t.name)}</span>`).join('')}
+        </div>`
+      :'<div style="font-size:13px;color:var(--brown-light);margin-bottom:8px">No tags yet — add some in the Tags tab first.</div>'}
 
       <div class="section-label" style="margin-top:16px">Notes & variations</div>
       <div class="field"><textarea id="fm-notes" placeholder="Tips, variations, memories..." oninput="FM.notes=this.value">${esc(FM.notes)}</textarea></div>
