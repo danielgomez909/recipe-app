@@ -21,9 +21,9 @@
 html, body { height: 100%; background: var(--cream); color: var(--brown); font-family: 'DM Sans', sans-serif; }
 .app { display: flex; flex-direction: column; height: 100svh; max-width: 680px; margin: 0 auto; background: var(--cream); }
 .topbar { padding: 14px 16px 10px; background: var(--cream); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.topbar-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; flex: 1; color: var(--brown); }
+.topbar-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; flex: 1; color: var(--brown); display: flex; align-items: baseline; gap: 3px; }
 .topbar-back { background: none; border: none; cursor: pointer; color: var(--brown-light); font-size: 22px; padding: 0; display: flex; align-items: center; }
-.info-btn { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--brown-light); color: var(--brown-light); text-decoration: none; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.info-btn { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--brown-light); color: var(--brown-light); text-decoration: none; font-size: 9px; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; vertical-align: super; line-height: 1; margin-bottom: 6px; }
 .info-btn:hover { border-color: var(--accent); color: var(--accent); }
 .nav { display: flex; background: var(--cream); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .nav-btn { flex: 1; padding: 10px 4px; font-size: 13px; font-family: 'DM Sans', sans-serif; border: none; background: none; color: var(--brown-light); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
@@ -129,8 +129,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 <div class="app">
   <div class="topbar">
     <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Back">&#8592;</button>
-    <div class="topbar-title" id="topbar-title">Decent Eats</div>
-    <a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">ⓘ</a>
+    <div class="topbar-title" id="topbar-title">Decent Eats<a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">i</a></div>
     <button class="btn btn-sm btn-primary" id="add-btn" onclick="openAddRecipe()">+ Recipe</button>
   </div>
   <div class="nav" id="main-nav">
@@ -372,7 +371,7 @@ async function saveNewIngredient(name, typeId){
 // ---- Recipe Modal (Add/Edit) — stable form state ----
 let FM = {}; // form model, stable across re-renders
 
-function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],steps:[''],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
+function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],steps:[{seq:1,text:''}],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
 
 async function openEditRecipe(id){
   const r=S.recipes.find(x=>x.id===id);
@@ -383,7 +382,7 @@ async function openEditRecipe(id){
   FM={
     name:r.name||'', source:r.source||'', serves:r.serves||'', notes:r.notes||'',
     ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
-    steps: steps.length ? steps.map(s=>s.instruction) : [''],
+    steps: steps.length ? steps.map(s=>({seq:s.step_number,text:s.instruction})) : [{seq:1,text:''}],
     showNewIng:false, newIngName:'', newIngTypeId:''
   };
   openRecipeModal(id);
@@ -456,8 +455,12 @@ function ingRowHtml(ing,i){
   </div>`;
 }
 
-function stepRowHtml(s,i){
-  return `<div class="step-build-row"><div class="step-build-num">${i+1}</div><textarea rows="2" placeholder="Describe step ${i+1}..." id="st-${i}">${esc(s)}</textarea><button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button></div>`;
+function stepRowHtml(step, i){
+  return `<div class="step-build-row">
+    <input type="number" min="1" id="sn-${i}" value="${step.seq}" oninput="FM.steps[${i}].seq=parseInt(this.value)||${i+1}" style="width:44px;padding:5px 6px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--accent);font-weight:500;text-align:center;outline:none;flex-shrink:0">
+    <textarea rows="2" placeholder="Describe step..." id="st-${i}">${esc(step.text)}</textarea>
+    <button class="btn btn-ghost btn-sm" style="margin-top:5px;padding:4px 7px" onclick="removeStepRow(${i})">✕</button>
+  </div>`;
 }
 
 function parseFraction(s){
@@ -504,11 +507,14 @@ function buildIngDrop(i, val){
   const drop=document.getElementById(`id-${i}`);
   if(!drop)return;
   const q=val.toLowerCase().trim();
-  const filtered=S.ingredients.filter(x=>x.name.toLowerCase().trim().includes(q));
-  const show=q?filtered:S.ingredients.slice(0,15);
-  const createItem=val.trim()?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault();quickCreateIng(${i})">+ Create “${esc(val.trim())}” as new ingredient</div>`:'';
-  drop.innerHTML=show.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\'")}')">${esc(x.name)}</div>`).join('')+createItem;
-  drop.style.display='block';
+  if(q){
+    const exact=S.ingredients.find(x=>x.name.toLowerCase().trim()===q);
+    if(exact){ selectIng(i,exact.id,exact.name); return; }
+  }
+  const filtered=q ? S.ingredients.filter(x=>x.name.toLowerCase().trim().includes(q)) : S.ingredients.slice(0,8);
+  const createItem=val.trim()?`<div class="ing-dropdown-item create" onmousedown="event.preventDefault();quickCreateIng(${i})">+ Create "${val.trim()}" as new ingredient</div>`:'';
+  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectIng(${i},'${x.id}','${x.name.replace(/'/g,"\'")}')">${x.name}</div>`).join('')+createItem;
+  drop.style.display=(filtered.length||val.trim())?'block':'none';
 }
 
 
@@ -551,8 +557,8 @@ async function quickCreateIng(i){
 
 function addIngRow(){ FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
 function removeIngRow(i){ FM.ings.splice(i,1); if(!FM.ings.length)FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
-function addStepRow(){ FM.steps.push(''); rerenderStepList(); }
-function removeStepRow(i){ FM.steps.splice(i,1); if(!FM.steps.length)FM.steps.push(''); rerenderStepList(); }
+function addStepRow(){ const nextSeq=FM.steps.length?Math.max(...FM.steps.map(s=>s.seq))+1:1; FM.steps.push({seq:nextSeq,text:''}); rerenderStepList(); }
+function removeStepRow(i){ FM.steps.splice(i,1); if(!FM.steps.length)FM.steps.push({seq:1,text:''}); rerenderStepList(); }
 
 function rerenderIngList(){
   const el=document.getElementById('ing-list');
@@ -566,7 +572,9 @@ function rerenderStepList(){
 function attachStepListeners(){
   FM.steps.forEach((_,i)=>{
     const ta=document.getElementById(`st-${i}`);
-    if(ta) ta.addEventListener('input',()=>{ FM.steps[i]=ta.value; });
+    const sn=document.getElementById(`sn-${i}`);
+    if(ta) ta.addEventListener('input',()=>{ FM.steps[i].text=ta.value; });
+    if(sn) sn.addEventListener('input',()=>{ FM.steps[i].seq=parseInt(sn.value)||i+1; });
   });
 }
 
@@ -592,7 +600,8 @@ function syncFMFromDOM(){
   const sv=document.getElementById('fm-serves'); if(sv)FM.serves=sv.value;
   const nt=document.getElementById('fm-notes'); if(nt)FM.notes=nt.value;
   document.querySelectorAll('[id^="is-"]').forEach(el=>{ const i=parseInt(el.id.slice(3)); if(FM.ings[i])FM.ings[i].ingName=el.value; });
-  document.querySelectorAll('#steps-list textarea').forEach((el,i)=>{ if(FM.steps[i]!==undefined)FM.steps[i]=el.value; });
+  document.querySelectorAll('#steps-list textarea').forEach((el,i)=>{ if(FM.steps[i]!==undefined)FM.steps[i].text=el.value; });
+  document.querySelectorAll('[id^="sn-"]').forEach(el=>{ const i=parseInt(el.id.slice(3)); if(FM.steps[i]!==undefined)FM.steps[i].seq=parseInt(el.value)||i+1; });
 }
 
 async function saveRecipe(editId){
@@ -608,7 +617,8 @@ async function saveRecipe(editId){
       recipeId=r.id;
     }
     if(editId) await db.del(`recipe_steps?recipe_id=eq.${editId}`);
-    const validSteps=FM.steps.map((s,i)=>s.trim()).filter(Boolean).map((inst,i)=>({recipe_id:recipeId,step_number:i+1,instruction:inst}));
+    const sortedSteps=FM.steps.filter(s=>s.text.trim()).sort((a,b)=>a.seq-b.seq);
+    const validSteps=sortedSteps.map((s,i)=>({recipe_id:recipeId,step_number:i+1,instruction:s.text.trim()}));
     if(validSteps.length) await db.post('recipe_steps',validSteps);
     if(editId) await db.del(`recipe_ingredients?recipe_id=eq.${editId}`);
     const unlinked=FM.ings.filter(i=>i.ingName.trim()&&!i.ingId);
