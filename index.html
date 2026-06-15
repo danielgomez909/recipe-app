@@ -239,13 +239,31 @@ function render(){
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
-  S.tab=tab; S.viewingRecipe=null; S.searchQ='';
+  S.tab=tab; S.viewingRecipe=null; S.searchQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
   document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)));
   render();
 }
 
-function goBack(){ S.viewingRecipe=null; S.tab='recipes'; render(); }
+// Wake lock
+let wakeLock = null;
+async function acquireWakeLock(){
+  try {
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  } catch(e){ /* silently fail if not supported */ }
+}
+function releaseWakeLock(){
+  if(wakeLock){ wakeLock.release(); wakeLock=null; }
+}
+// Re-acquire if page becomes visible again (e.g. switching back from another app)
+document.addEventListener('visibilitychange', async()=>{
+  if(document.visibilityState==='visible' && S.viewingRecipe) await acquireWakeLock();
+});
+
+function goBack(){ releaseWakeLock(); S.viewingRecipe=null; S.tab='recipes'; render(); }
 
 function renderRecipeList(){
   const c=document.getElementById('content');
@@ -312,6 +330,7 @@ function renderXrefFiltered(){
 
 async function viewRecipe(id){
   S.viewingRecipe=S.recipes.find(r=>r.id===id);
+  await acquireWakeLock();
   render();
 }
 
@@ -638,7 +657,7 @@ async function saveRecipe(editId){
 
 async function confirmDelete(id){
   if(!confirm('Delete this recipe? Cannot be undone.'))return;
-  try{ await db.del(`recipes?id=eq.${id}`); S.recipes=S.recipes.filter(r=>r.id!==id); S.viewingRecipe=null; toast('Deleted'); render(); }
+  try{ await db.del(`recipes?id=eq.${id}`); S.recipes=S.recipes.filter(r=>r.id!==id); S.viewingRecipe=null; releaseWakeLock(); toast('Deleted'); render(); }
   catch(e){ toast('Error deleting'); }
 }
 
