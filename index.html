@@ -130,6 +130,21 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brown); color: white; padding: 9px 18px; border-radius: 20px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
 .toast.show { opacity: 1; }
 .detail-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.checklist-overlay { position: fixed; inset: 0; background: var(--cream); z-index: 150; display: flex; flex-direction: column; }
+.checklist-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; background: white; }
+.checklist-header h2 { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; flex: 1; color: var(--brown); }
+.checklist-body { flex: 1; overflow-y: auto; padding: 16px; }
+.checklist-section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--brown-light); margin: 18px 0 8px; }
+.checklist-section-title:first-child { margin-top: 0; }
+.checklist-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer; transition: all .15s; }
+.checklist-item:hover { border-color: var(--border-strong); }
+.checklist-item.checked { background: var(--green-light); border-color: rgba(74,103,65,0.25); }
+.checklist-item.checked .checklist-text { text-decoration: line-through; color: var(--brown-light); }
+.checklist-checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.checklist-item.checked .checklist-checkbox { background: var(--green); border-color: var(--green); color: white; font-size: 13px; }
+.checklist-text { font-size: 15px; line-height: 1.4; flex: 1; }
+.checklist-qty { color: var(--accent); font-weight: 500; margin-right: 6px; }
+.checklist-progress { font-size: 12px; color: var(--brown-light); padding: 10px 16px; background: var(--cream2); border-top: 1px solid var(--border); flex-shrink: 0; text-align: center; }
 /* Ingredient master list */
 .ing-master-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; gap: 10px; }
 .ing-master-row:last-child { border-bottom: none; }
@@ -166,6 +181,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
   </div>
 </div>
 <div id="modal-root"></div>
+<div id="checklist-root"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -317,6 +333,85 @@ document.addEventListener('visibilitychange', async()=>{
 });
 
 function goBack(){ releaseWakeLock(); S.viewingRecipe=null; S.tab='recipes'; render(); }
+
+// ---- Checklist mode ----
+let checklistState = { checkedIngs: new Set(), checkedSteps: new Set() };
+
+function openChecklist(){
+  checklistState = { checkedIngs: new Set(), checkedSteps: new Set() };
+  document.getElementById('app').style.display='none';
+  acquireWakeLock();
+  renderChecklist();
+}
+
+function closeChecklist(){
+  document.getElementById('checklist-root').innerHTML='';
+  document.getElementById('app').style.display='';
+}
+
+function renderChecklist(){
+  const r = S.viewingRecipe;
+  const { steps, ings } = S.currentDetailData || { steps:[], ings:[] };
+  const solo = ings.filter(i=>i.or_group==null);
+  const groups = {};
+  for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group]) groups[i.or_group]=[]; groups[i.or_group].push(i); }
+
+  let ingIdx = 0;
+  const ingItemsHtml = [
+    ...solo.map(i => {
+      const idx = ingIdx++;
+      const checked = checklistState.checkedIngs.has(idx);
+      return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistIng(${idx})">
+        <div class="checklist-checkbox">${checked?'✓':''}</div>
+        <div class="checklist-text"><span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}</div>
+      </div>`;
+    }),
+    ...Object.values(groups).map(grp => {
+      const optionsHtml = grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
+      const idx = ingIdx++;
+      const checked = checklistState.checkedIngs.has(idx);
+      return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistIng(${idx})">
+        <div class="checklist-checkbox">${checked?'✓':''}</div>
+        <div class="checklist-text">${optionsHtml}</div>
+      </div>`;
+    })
+  ].join('');
+
+  const stepItemsHtml = steps.map((s,idx) => {
+    const checked = checklistState.checkedSteps.has(idx);
+    return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistStep(${idx})">
+      <div class="checklist-checkbox">${checked?'✓':''}</div>
+      <div class="checklist-text"><strong>${s.step_number}.</strong> ${esc(s.instruction)}</div>
+    </div>`;
+  }).join('');
+
+  const totalItems = ingIdx + steps.length;
+  const checkedCount = checklistState.checkedIngs.size + checklistState.checkedSteps.size;
+
+  document.getElementById('checklist-root').innerHTML = `
+    <div class="checklist-overlay">
+      <div class="checklist-header">
+        <button class="topbar-back" onclick="closeChecklist()" aria-label="Close">&#8592;</button>
+        <h2>${esc(r.name)}</h2>
+      </div>
+      <div class="checklist-body">
+        ${ingItemsHtml ? `<div class="checklist-section-title">Ingredients</div>${ingItemsHtml}` : ''}
+        ${stepItemsHtml ? `<div class="checklist-section-title">Program</div>${stepItemsHtml}` : ''}
+      </div>
+      <div class="checklist-progress">${checkedCount} of ${totalItems} complete</div>
+    </div>`;
+}
+
+function toggleChecklistIng(idx){
+  if(checklistState.checkedIngs.has(idx)) checklistState.checkedIngs.delete(idx);
+  else checklistState.checkedIngs.add(idx);
+  renderChecklist();
+}
+function toggleChecklistStep(idx){
+  if(checklistState.checkedSteps.has(idx)) checklistState.checkedSteps.delete(idx);
+  else checklistState.checkedSteps.add(idx);
+  renderChecklist();
+}
 
 function renderRecipeList(){
   const c=document.getElementById('content');
@@ -489,6 +584,7 @@ async function renderDetail(){
     db.get(`recipe_ingredients?recipe_id=eq.${r.id}&select=id,quantity,or_group,units(abbreviation),ingredient_master(id,name)`),
     db.get(`recipe_tags?recipe_id=eq.${r.id}&select=tag_id`)
   ]);
+  S.currentDetailData = { steps, ings, recipeTags };
   const solo=ings.filter(i=>i.or_group==null);
   const groups={};
   for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
@@ -502,6 +598,7 @@ async function renderDetail(){
   const tagsHtml=tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
   c.innerHTML=`
     <div class="detail-actions">
+      <button class="btn btn-sm btn-primary" onclick="openChecklist()">▶ Cook this recipe</button>
       <button class="btn btn-sm" onclick="openEditRecipe('${r.id}')">Edit</button>
       <button class="btn btn-sm btn-danger" onclick="confirmDelete('${r.id}')">Delete</button>
     </div>
