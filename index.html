@@ -232,21 +232,7 @@ function scaleAndFormatQty(qty, unit, scale){
   if(unit.abbreviation==='pinch'){
     return `${toFraction(scaledQty)} pinch`;
   }
-  // If we don't have full unit metadata (system/type/base_multiplier), just scale without converting
-  if(unit.base_multiplier==null || !unit.system || !unit.type){
-    return `${toFraction(scaledQty)} ${unit.abbreviation||''}`.trim();
-  }
-  // Convert scaled amount into the base unit (ml or g)
-  const baseAmount = scaledQty * unit.base_multiplier;
-  // Candidates: same system + type, so cups stay cups-family, ml stays ml-family
-  const candidates = S.units.filter(u => u.system===unit.system && u.type===unit.type);
-  if(!candidates.length) return `${toFraction(scaledQty)} ${unit.abbreviation||''}`.trim();
-  const sortedDesc = [...candidates].sort((a,b)=>b.base_multiplier-a.base_multiplier);
-  // Pick the largest unit where the converted value is still >= 1
-  let chosen = sortedDesc.find(u => baseAmount / u.base_multiplier >= 1 - 1e-9);
-  if(!chosen) chosen = sortedDesc[sortedDesc.length-1]; // fall back to smallest unit available
-  const chosenVal = baseAmount / chosen.base_multiplier;
-  return `${toFraction(chosenVal)} ${chosen.abbreviation}`;
+  return `${toFraction(scaledQty)} ${unit.abbreviation||''}`.trim();
 }
 
 // State
