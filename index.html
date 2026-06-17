@@ -152,6 +152,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="nav-btn" onclick="switchTab('ingredients')">Ingredients</button>
     <button class="nav-btn" onclick="switchTab('xref')">Cross-ref</button>
     <button class="nav-btn" onclick="switchTab('tags')">Tags</button>
+    <button class="nav-btn" onclick="switchTab('drafts')">Draft Recipes</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
     <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
@@ -208,17 +209,19 @@ function fmtQty(qty,unit){
 }
 
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, recipes:[], units:[], types:[], ingredients:[], tags:[], searchQ:'' };
+const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, recipes:[], drafts:[], draftCount:0, units:[], types:[], ingredients:[], tags:[], searchQ:'' };
 
 async function init(){
-  const [units,types,ings,recipes,tags] = await Promise.all([
+  const [units,types,ings,recipes,tags,drafts] = await Promise.all([
     db.get('units?order=type,system,name'),
     db.get('ingredient_types?order=name'),
     db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)'),
-    db.get('recipes?order=name&select=id,name,source,notes,serves,created_at'),
-    db.get('tags?order=name')
+    db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,created_at'),
+    db.get('tags?order=name'),
+    db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,raw_import_text,import_source_url')
   ]);
   S.units=units; S.types=types; S.ingredients=ings; S.recipes=recipes; S.tags=tags;
+  S.drafts=drafts; S.draftCount=drafts.length;
   render();
 }
 
@@ -257,6 +260,12 @@ function render(){
     document.getElementById('search-input').placeholder='Search ingredients or recipes...';
     document.getElementById('sub-nav').style.display='none';
     renderXref();
+  } else if(S.tab==='drafts'){
+    addBtn.style.display='none';
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search draft recipes...';
+    document.getElementById('sub-nav').style.display='none';
+    renderDraftList();
   } else if(S.tab==='tags'){
     document.getElementById('sub-nav').style.display='';
     searchBar.style.display='none';
@@ -273,9 +282,9 @@ function render(){
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
-  S.tab=tab; S.viewingRecipe=null; S.searchQ=''; releaseWakeLock();
+  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.searchQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)));
   render();
 }
 
@@ -313,8 +322,37 @@ function renderRecipeList(){
   const c=document.getElementById('content');
   let list=S.recipes;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(r=>r.name.toLowerCase().includes(q)||(r.source||'').toLowerCase().includes(q)); }
-  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No recipes yet</h3><p>Add your first recipe!</p></div>'; return; }
-  c.innerHTML=list.map(r=>`<div class="recipe-card" onclick="viewRecipe('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}${r.serves?' &middot; Serves '+esc(r.serves):''}</div></div>`).join('');
+  const draftNote = S.draftCount ? `<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px;padding:6px 10px;background:var(--cream2);border-radius:var(--radius-sm)">${S.draftCount} draft recipe${S.draftCount===1?'':'s'} hidden — see the Draft Recipes tab</div>` : '';
+  if(!list.length){ c.innerHTML=draftNote+(S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No recipes yet</h3><p>Add your first recipe!</p></div>'); return; }
+  c.innerHTML=draftNote+list.map(r=>`<div class="recipe-card" onclick="viewRecipe('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}${r.serves?' &middot; Serves '+esc(r.serves):''}</div></div>`).join('');
+}
+
+function renderDraftList(){
+  const c=document.getElementById('content');
+  let list=S.drafts;
+  if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(r=>r.name.toLowerCase().includes(q)); }
+  const intro = `<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px;padding:6px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Imported from the old blog. Tap a draft to review, fill in missing details, and clean it up.</div>`;
+  if(!list.length){ c.innerHTML=intro+(S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No drafts left</h3><p>All imported recipes have been cleaned up.</p></div>'); return; }
+  c.innerHTML=intro+list.map(r=>`<div class="recipe-card" onclick="viewDraft('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}</div></div>`).join('');
+}
+
+async function viewDraft(id){
+  const d=S.drafts.find(x=>x.id===id);
+  if(!d) return;
+  const [steps,ings,recipeTags]=await Promise.all([
+    db.get(`recipe_steps?recipe_id=eq.${id}&order=step_number`),
+    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,ingredient_master(id,name)`),
+    db.get(`recipe_tags?recipe_id=eq.${id}&select=tag_id`)
+  ]);
+  FM={
+    name:d.name||'', source:d.source||'', serves:d.serves||'', notes:d.notes||'',
+    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
+    steps: steps.length ? steps.map(s=>({seq:s.step_number,text:s.instruction})) : [{seq:1,text:''}],
+    selectedTags: recipeTags.map(rt=>rt.tag_id),
+    showNewIng:false, newIngName:'', newIngTypeId:'',
+    isDraftCleanup:true, draftId:id, rawImportText:d.raw_import_text, importSourceUrl:d.import_source_url
+  };
+  openRecipeModal(id);
 }
 
 async function renderIngredientList(){
@@ -552,6 +590,13 @@ function renderRecipeModal(editId){
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
+      ${FM.isDraftCleanup?`
+        <div style="background:var(--cream2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px">
+          <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:6px">Original blog import — for reference while cleaning up</div>
+          ${FM.importSourceUrl?`<a href="${esc(FM.importSourceUrl)}" target="_blank" style="font-size:12px;color:var(--accent);word-break:break-all">${esc(FM.importSourceUrl)}</a>`:''}
+          <textarea readonly style="width:100%;margin-top:8px;min-height:140px;font-size:12px;font-family:'DM Mono',monospace;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;color:var(--brown-light);resize:vertical">${esc(FM.rawImportText||'')}</textarea>
+        </div>
+      `:''}
       <div class="field"><label>Recipe name</label><input id="fm-name" value="${esc(FM.name)}" placeholder="e.g. Grandma's Stuffing" oninput="FM.name=this.value"></div>
       <div class="row2">
         <div class="field"><label>Source</label><input id="fm-source" value="${esc(FM.source)}" placeholder="URL, book, person..." oninput="FM.source=this.value"></div>
@@ -594,7 +639,7 @@ function renderRecipeModal(editId){
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveRecipe('${editId||''}')">${isEdit?'Save changes':'Add recipe'}</button>
+      <button class="btn btn-primary" onclick="saveRecipe('${editId||''}')">${FM.isDraftCleanup?'Save & remove draft status':(isEdit?'Save changes':'Add recipe')}</button>
     </div>`);
   attachIngDropdowns();
   attachStepListeners();
@@ -769,7 +814,14 @@ async function saveRecipe(editId){
   if(!FM.name.trim()){ toast('Recipe name required'); return; }
   try{
     let recipeId=editId;
-    const payload={name:FM.name.trim(),source:FM.source.trim()||null,serves:FM.serves.trim()||null,notes:FM.notes.trim()||null};
+    let finalName=FM.name.trim();
+    const payload={name:finalName,source:FM.source.trim()||null,serves:FM.serves.trim()||null,notes:FM.notes.trim()||null};
+    if(FM.isDraftCleanup){
+      // strip leading [DRAFT] prefix if still present, and clear draft status
+      finalName=finalName.replace(/^\[DRAFT\]\s*/,'').trim();
+      payload.name=finalName;
+      payload.is_draft=false;
+    }
     if(editId){
       await db.patch(`recipes?id=eq.${editId}`,payload);
     } else {
@@ -791,9 +843,16 @@ async function saveRecipe(editId){
     // save tags
     if(editId) await db.del(`recipe_tags?recipe_id=eq.${editId}`);
     if(FM.selectedTags.length) await db.post('recipe_tags', FM.selectedTags.map(tid=>({recipe_id:recipeId,tag_id:tid})));
-    S.recipes=await db.get('recipes?order=name&select=id,name,source,notes,serves,created_at');
-    if(editId){ S.viewingRecipe=S.recipes.find(r=>r.id===editId); }
-    closeModal(); toast(editId?'Recipe updated!':'Recipe added!'); render();
+    S.recipes=await db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,created_at');
+    if(FM.isDraftCleanup){
+      S.drafts=S.drafts.filter(d=>d.id!==recipeId);
+      S.draftCount=S.drafts.length;
+      S.tab='recipes';
+    }
+    if(editId && !FM.isDraftCleanup){ S.viewingRecipe=S.recipes.find(r=>r.id===editId); }
+    closeModal();
+    toast(FM.isDraftCleanup?'Draft cleaned up and saved!':(editId?'Recipe updated!':'Recipe added!'));
+    render();
   }catch(e){ toast('Error saving: '+e.message); }
 }
 
