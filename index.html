@@ -224,8 +224,28 @@ function fmtQty(qty,unit){
   return[q,u].filter(Boolean).join(' ');
 }
 
+// ---- Recipe scaling ----
+function scaleAndFormatQty(qty, unit, scale){
+  if(qty==null) return fmtQty(qty, unit);
+  const scaledQty = qty * scale;
+  if(!unit) return toFraction(scaledQty);
+  if(unit.abbreviation==='pinch'){
+    return `${toFraction(scaledQty)} pinch`;
+  }
+  // Convert scaled amount into the base unit (ml or g)
+  const baseAmount = scaledQty * unit.base_multiplier;
+  // Candidates: same system + type, so cups stay cups-family, ml stays ml-family
+  const candidates = S.units.filter(u => u.system===unit.system && u.type===unit.type);
+  const sortedDesc = [...candidates].sort((a,b)=>b.base_multiplier-a.base_multiplier);
+  // Pick the largest unit where the converted value is still >= 1
+  let chosen = sortedDesc.find(u => baseAmount / u.base_multiplier >= 1 - 1e-9);
+  if(!chosen) chosen = sortedDesc[sortedDesc.length-1]; // fall back to smallest unit available
+  const chosenVal = baseAmount / chosen.base_multiplier;
+  return `${toFraction(chosenVal)} ${chosen.abbreviation}`;
+}
+
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, recipes:[], drafts:[], draftCount:0, units:[], types:[], ingredients:[], tags:[], searchQ:'' };
+const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, recipes:[], drafts:[], draftCount:0, units:[], types:[], ingredients:[], tags:[], searchQ:'', currentScale:1 };
 
 async function init(){
   const [units,types,ings,recipes,tags,drafts] = await Promise.all([
@@ -371,12 +391,12 @@ function renderChecklist(){
   const ingItemsHtml = [
     ...solo.map(i => {
       const idx = ingIdx++;
-      const inner = `<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}`;
+      const inner = `<span class="checklist-qty">${scaleAndFormatQty(i.quantity,i.units,S.currentScale)}</span>${esc(i.ingredient_master.name)}`;
       return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     }),
     ...Object.values(groups).map(grp => {
       const idx = ingIdx++;
-      const inner = grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
+      const inner = grp.map(i=>`${scaleAndFormatQty(i.quantity,i.units,S.currentScale)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
       return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     })
   ].join('');
@@ -393,7 +413,7 @@ function renderChecklist(){
     <div class="checklist-overlay">
       <div class="checklist-header">
         <button class="topbar-back" onclick="closeChecklist()" aria-label="Close">&#8592;</button>
-        <h2 id="checklist-title">${esc(r.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':''}</h2>
+        <h2 id="checklist-title">${esc(r.name)}${S.currentScale!==1?` <span style="font-size:12px;color:var(--accent);font-weight:500">(${S.currentScale}x)</span>`:''}${wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':''}</h2>
       </div>
       <div class="checklist-body">
         ${ingItemsHtml ? `<div class="checklist-section-title">Ingredients</div>${ingItemsHtml}` : ''}
@@ -584,6 +604,7 @@ async function confirmDeleteTag(id, name){
 
 async function viewRecipe(id){
   S.viewingRecipe=S.recipes.find(r=>r.id===id);
+  S.currentScale=1;
   await acquireWakeLock();
   render();
 }
@@ -598,17 +619,25 @@ async function renderDetail(){
     db.get(`recipe_tags?recipe_id=eq.${r.id}&select=tag_id`)
   ]);
   S.currentDetailData = { steps, ings, recipeTags };
+  renderDetailIngredientsAndRest(r);
+}
+
+function renderDetailIngredientsAndRest(r){
+  const c=document.getElementById('content');
+  const { steps, ings, recipeTags } = S.currentDetailData;
+  const scale = S.currentScale;
   const solo=ings.filter(i=>i.or_group==null);
   const groups={};
   for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
   const ingHtml=[
-    ...solo.map(i=>`<div class="ing-row"><span class="ing-qty">${fmtQty(i.quantity,i.units)}</span><span>${esc(i.ingredient_master.name)}</span></div>`),
-    ...Object.values(groups).map(grp=>`<div class="ing-row" style="flex-direction:column;gap:3px;padding:8px 0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:2px">Choose one:</div>${grp.map(i=>`<div style="display:flex;gap:10px;font-size:14px"><span class="ing-qty">${fmtQty(i.quantity,i.units)}</span><span>${esc(i.ingredient_master.name)}</span><span class="or-badge">or</span></div>`).join('')}</div>`)
+    ...solo.map(i=>`<div class="ing-row"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}</span></div>`),
+    ...Object.values(groups).map(grp=>`<div class="ing-row" style="flex-direction:column;gap:3px;padding:8px 0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:2px">Choose one:</div>${grp.map(i=>`<div style="display:flex;gap:10px;font-size:14px"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}</span><span class="or-badge">or</span></div>`).join('')}</div>`)
   ].join('');
   const stepsHtml=steps.length?steps.map(s=>`<div class="step-row"><div class="step-num">${s.step_number}</div><div>${esc(s.instruction)}</div></div>`).join(''):'<div style="font-size:13px;color:var(--brown-light)">No steps added.</div>';
   const sourceHtml=r.source?(r.source.startsWith('http')?`<a href="${esc(r.source)}" target="_blank" style="color:var(--accent);font-size:14px;word-break:break-all">${esc(r.source)}</a>`:`<span style="font-size:14px">${esc(r.source)}</span>`):'<span style="font-size:13px;color:var(--brown-light)">—</span>';
   const tagNames=recipeTags.map(rt=>S.tags.find(t=>t.id===rt.tag_id)).filter(Boolean);
   const tagsHtml=tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
+  const scaleOptions=[1,2,3,4,5,8,10].map(n=>`<option value="${n}"${n===scale?' selected':''}>${n}x</option>`).join('');
   c.innerHTML=`
     <div class="detail-actions">
       <button class="btn btn-sm btn-primary" onclick="openChecklist()">▶ Cook this recipe</button>
@@ -617,9 +646,20 @@ async function renderDetail(){
     </div>
     <div class="detail-section"><div class="detail-section-header"><h4>Source${r.serves?' &nbsp;·&nbsp; Serves '+esc(r.serves):''}</h4></div><div class="detail-section-body">${sourceHtml}</div></div>
     <div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>
-    <div class="detail-section"><div class="detail-section-header"><h4>Ingredients</h4></div><div class="detail-section-body" style="padding:0 16px">${ingHtml||'<div style="font-size:13px;color:var(--brown-light);padding:12px 0">None added.</div>'}</div></div>
+    <div class="detail-section">
+      <div class="detail-section-header" style="display:flex;align-items:center;justify-content:space-between">
+        <h4>Ingredients</h4>
+        <select onchange="setRecipeScale(this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--border-strong);border-radius:6px;background:white;color:var(--brown-light);outline:none">${scaleOptions}</select>
+      </div>
+      <div class="detail-section-body" style="padding:0 16px">${ingHtml||'<div style="font-size:13px;color:var(--brown-light);padding:12px 0">None added.</div>'}</div>
+    </div>
     <div class="detail-section"><div class="detail-section-header"><h4>Program</h4></div><div class="detail-section-body">${stepsHtml}</div></div>
     <div class="detail-section"><div class="detail-section-header"><h4>Notes & variations</h4></div><div class="detail-section-body">${r.notes?`<div class="notes-text">${esc(r.notes)}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No notes yet.</div>'}</div></div>`;
+}
+
+function setRecipeScale(val){
+  S.currentScale = Number(val);
+  renderDetailIngredientsAndRest(S.viewingRecipe);
 }
 
 // ---- Add Ingredient (standalone) ----
