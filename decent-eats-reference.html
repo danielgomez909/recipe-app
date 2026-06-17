@@ -252,12 +252,12 @@
 
   <!-- DEPLOY WORKFLOW -->
   <h2>Deployment Workflow</h2>
-  <p>How to update the app after making changes to <code>index.html</code>:</p>
+  <p>How to update the app after making changes to <code>index.html</code> (standardized on the GitHub website approach across all apps):</p>
 
-  <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Edit index.html</strong><span>Open the file at Google Drive → My Drive → Dan-Git → recipe-app → index.html. Make your changes and save.</span></div></div>
-  <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Open GitHub Desktop</strong><span>The app will detect the changed file and show it under "Changes".</span></div></div>
-  <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Write a summary and commit</strong><span>Type a short description in the Summary box (e.g. "add checklist tab"), then click Commit to main.</span></div></div>
-  <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Push to GitHub</strong><span>Click Push origin at the top. This sends your change to GitHub.</span></div></div>
+  <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Get the updated file</strong><span>Download the updated file(s) from Claude.</span></div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Open the GitHub repo</strong><span>Go to github.com/danielgomez909/recipe-app</span></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Upload or edit the file</strong><span>Click the file, then the pencil icon to edit, or drag-and-drop to upload a replacement.</span></div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Commit changes</strong><span>Add a short commit message and click "Commit changes".</span></div></div>
   <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Vercel auto-deploys</strong><span>Within ~30 seconds, Vercel detects the push and deploys the new version. Visit project-a7lbt.vercel.app to confirm.</span></div></div>
 
   <div class="info-box"><p>To make a database schema change (add a column, new table, etc.), go to Supabase → SQL Editor, run your SQL, then update the app code if needed and deploy.</p></div>
@@ -275,24 +275,17 @@
 
   <h3>UX improvements</h3>
   <div class="backlog-section">
-    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Auto-select ingredient when typed name exactly matches an entry in the master list</span></div>
-    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Limit ingredient dropdown initial size (before typing) as master list grows large</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">ⓘ button styling — refine to true superscript appearance next to title (low priority)</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Clicking a tag on recipe detail navigates to Tag Search subtab filtered to that tag</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Manual unit override for scaled recipes — let the user pick a different display unit when scaling makes the original awkward (e.g. convert 7.5 tbsp to cups manually), rather than auto-converting</span></div>
   </div>
 
   <h3>New features</h3>
   <div class="backlog-section">
-    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Checklist mode — a separate tab to "use" a recipe, with checkable ingredients and steps that you can tick off as you cook</span></div>
     <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">YouTube / video link field on recipes — optional, separate from source, for linking or embedding cooking videos</span></div>
     <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Equipment field — capture the hardware used in a recipe (e.g. dutch oven, cast iron skillet, air fryer)</span></div>
-    <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Tagging — tag recipes by category (similar to the blog), with filtering by tag on the recipes tab</span></div>
     <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Sidebars tab — misc cooking ramblings and notes that aren't full recipes (mirrors the blog format)</span></div>
     <div class="backlog-item"><span class="backlog-tag tag-feature">Feature</span><span class="backlog-text">Cross-ref compound search — search for recipes that share multiple specific ingredients</span></div>
-  </div>
-
-  <h3>UX improvements</h3>
-  <div class="backlog-section">
-    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">ⓘ button styling — refine to true superscript appearance next to title (low priority)</span></div>
-    <div class="backlog-item"><span class="backlog-tag tag-ux">UX</span><span class="backlog-text">Tag chips on recipe detail — clicking a tag navigates to Tag Search subtab filtered to that tag</span></div>
   </div>
 
   <h3>Security</h3>
@@ -302,9 +295,8 @@
 
   <h3>Data &amp; import</h3>
   <div class="backlog-section">
-    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Import recipe from a website URL — paste a link and have the app parse and pre-fill the recipe form</span></div>
     <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Bulk upload ingredients from a CSV file</span></div>
-    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">Bulk load recipes from a file (provide a template with the required columns)</span></div>
+    <div class="backlog-item"><span class="backlog-tag tag-data">Data</span><span class="backlog-text">General-purpose bulk load recipes from a file template (note: blog and Trello migrations are now handled via the Draft Recipes workflow specifically)</span></div>
   </div>
 
   <h2>Database Schema — Additional Tables</h2>
@@ -322,13 +314,36 @@
     <div class="schema-row"><span class="schema-col">tag_id<span class="fk">FK</span></span><span class="schema-type">int</span><span class="schema-desc">References tags.id — cascades on delete</span></div>
   </div>
 
+  <h3>Draft recipe import columns (added to <code>recipes</code> table)</h3>
+  <div class="schema-table">
+    <div class="schema-table-header"><span class="schema-table-name">recipes (additional columns)</span><span class="schema-table-desc">Support for bulk-imported draft recipes pending manual cleanup</span></div>
+    <div class="schema-row"><span class="schema-col">is_draft</span><span class="schema-type">boolean</span><span class="schema-desc">Default false. True for imported recipes not yet cleaned up. Hidden from the main Recipes tab; shown in Draft Recipes tab.</span></div>
+    <div class="schema-row"><span class="schema-col">raw_import_text</span><span class="schema-type">text</span><span class="schema-desc">Full original text blob from the import source, preserved for manual reference during cleanup</span></div>
+    <div class="schema-row"><span class="schema-col">import_source_url</span><span class="schema-type">text</span><span class="schema-desc">Link back to the original source (blog post or Trello card)</span></div>
+  </div>
+
+  <h2>Bulk Import History</h2>
+  <p>Two one-time bulk imports were performed to migrate existing recipe data into Decent Eats as draft recipes:</p>
+
+  <h3>Blog migration (116 recipes)</h3>
+  <p>Source: gomezcookery.blogspot.com. Saved as 3 HTML pages (Decent_Eats_A/B/C.html) covering the full blog archive at expanded posts-per-page. Parsed using a tiered approach: modern posts with consistent Source/Notes/Serves/Ingredients/Program/Variations/Log/Tags/Version field structure parsed cleanly into proper fields; older free-form posts fell back to dash-bullet and numbered-list detection. All 116 imported as <code>[DRAFT]</code> recipes with the full original text preserved in <code>raw_import_text</code> and a link to the original post in <code>import_source_url</code>. Source HTML files are stored in the GitHub repo (excluded from Vercel deployment via <code>.vercelignore</code>) for reference.</p>
+
+  <h3>Trello migration (361 cards)</h3>
+  <p>Source: a Trello board used as a recipe queue ("Interested", "Queue", "Retired", "Published", "Done", "Template", "Editing" lists). Exported to Excel (trello_recipes_open_cards.xlsx) and imported in full regardless of list status. URLs were extracted from the Source URL column when present, or detected via regex in the card name or description when not. Fuzzy title matching (≥80% similarity) against the 116 blog drafts flagged 114 likely duplicates — these were still imported but with a duplicate warning prepended to their <code>raw_import_text</code> for manual review. The source Excel file is stored in the GitHub repo (excluded from Vercel deployment via <code>.vercelignore</code>) for reference.</p>
+
+  <div class="info-box"><p>Total draft recipes pending cleanup after both imports: 477. Use the Draft Recipes tab to review each one — the cleanup form shows the original raw text and source link alongside the normal recipe fields. Saving removes the [DRAFT] prefix and draft status; the Delete Draft button permanently removes a draft you've decided not to build.</p></div>
+
   <h2>Version History</h2>
   <table>
     <tr><th>Date</th><th>Summary</th></tr>
     <tr><td>May 24, 2026</td><td>Initial build — Supabase schema, single HTML app, Vercel deployment, GitHub Desktop workflow. Core features: recipe CRUD, ingredient master + junction table, or-groups, steps, notes, serves, ingredient cross-reference, search.</td></tr>
     <tr><td>May 24, 2026</td><td>Bug fixes — form reset resolved via FM object pattern. Ingredient dropdown clipping fixed. Dropdown focus/blur stabilized. Fraction input support. Pinch unit added.</td></tr>
     <tr><td>June 2026</td><td>Added .vercelignore, reference doc, in-app ⓘ button, wake lock, editable step sequence numbers, auto-select ingredient on exact match, limited initial dropdown to 8 items.</td></tr>
-    <tr><td>June 2026</td><td>Added tagging system — tags table, recipe_tags junction table, Tags tab with Tag List and Tag Search subtabs, tag assignment in recipe form with filter input, tags displayed on recipe detail. Deployment workflow updated to GitHub website approach.</td></tr>
+    <tr><td>June 2026</td><td>Added tagging system — tags table, recipe_tags junction table, Tags tab with Tag List and Tag Search subtabs, tag assignment in recipe form with filter input, tags displayed on recipe detail. Deployment workflow updated to GitHub website approach (standardized across all apps).</td></tr>
+    <tr><td>June 2026</td><td>Wake lock indicator added (eye icon, shown whenever wake lock is active). App icon designed and added (DE monogram, orange background) for iOS/Android home screen.</td></tr>
+    <tr><td>June 2026</td><td>Bulk migration: 116 recipes imported from gomezcookery.blogspot.com and 361 cards imported from Trello board, both as draft recipes. Added is_draft, raw_import_text, import_source_url columns. Built Draft Recipes tab with cleanup workflow (raw text + source link shown during edit) and Delete Draft button. Duplicate detection flagged 114 likely overlaps between the two import sources.</td></tr>
+    <tr><td>June 2026</td><td>Checklist mode ("Cook this recipe") — full-screen checkable view of ingredients and steps, in-app only, not persisted. Fixed scroll-reset bug (now updates DOM in place) and missing wake-lock icon in checklist header.</td></tr>
+    <tr><td>June 2026</td><td>Recipe scaling — dropdown in Ingredients section header (1x–10x) scales all quantities arithmetically. Original unit is always preserved exactly, no automatic unit conversion (corrected after initial version incorrectly auto-converted units, e.g. tsp→pinch, tbsp→fl oz). Scale carries through to checklist mode. Resets to 1x on each recipe view.</td></tr>
   </table>
 
 </div>
