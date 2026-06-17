@@ -638,6 +638,7 @@ function renderRecipeModal(editId){
       <div class="field"><textarea id="fm-notes" placeholder="Tips, variations, memories..." oninput="FM.notes=this.value">${esc(FM.notes)}</textarea></div>
     </div>
     <div class="modal-footer">
+      ${FM.isDraftCleanup?`<button class="btn btn-danger" onclick="deleteDraft('${editId}')" style="margin-right:auto">Delete Draft</button>`:''}
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveRecipe('${editId||''}')">${FM.isDraftCleanup?'Save & remove draft status':(isEdit?'Save changes':'Add recipe')}</button>
     </div>`);
@@ -860,6 +861,19 @@ async function confirmDelete(id){
   if(!confirm('Delete this recipe? Cannot be undone.'))return;
   try{ await db.del(`recipes?id=eq.${id}`); S.recipes=S.recipes.filter(r=>r.id!==id); S.viewingRecipe=null; releaseWakeLock(); toast('Deleted'); render(); }
   catch(e){ toast('Error deleting'); }
+}
+
+async function deleteDraft(id){
+  if(!confirm('Delete this draft recipe permanently? This cannot be undone. (The original source is preserved in your GitHub repo if you ever want to revisit it.)'))return;
+  try{
+    await db.del(`recipes?id=eq.${id}`);
+    S.drafts=S.drafts.filter(d=>d.id!==id);
+    S.draftCount=S.drafts.length;
+    closeModal();
+    toast('Draft deleted');
+    S.tab='drafts';
+    render();
+  }catch(e){ toast('Error deleting draft: '+e.message); }
 }
 
 function openModal(html){ document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`; }
