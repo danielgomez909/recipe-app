@@ -28,6 +28,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .topbar-back { background: none; border: none; cursor: pointer; color: var(--brown-light); font-size: 22px; padding: 0; display: flex; align-items: center; }
 .info-btn { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--brown-light); color: var(--brown-light); text-decoration: none; font-size: 9px; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; vertical-align: super; line-height: 1; margin-bottom: 6px; }
 .info-btn:hover { border-color: var(--accent); color: var(--accent); }
+.wake-icon { font-size: 11px; color: var(--green); margin-left: 2px; vertical-align: super; line-height: 1; }
 .nav { display: flex; background: var(--cream); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .nav-btn { flex: 1; padding: 10px 4px; font-size: 13px; font-family: 'DM Sans', sans-serif; border: none; background: none; color: var(--brown-light); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
 .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
@@ -187,7 +188,7 @@ const db = {
 
 function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 const INFO_BTN = '<a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">i</a>';
-function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + INFO_BTN; }
+function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + INFO_BTN + (wakeLock ? '<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>' : ''); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function toFraction(d){
   if(d==null)return''; d=Number(d); if(Number.isInteger(d))return String(d);
@@ -290,12 +291,16 @@ async function acquireWakeLock(){
   try {
     if('wakeLock' in navigator){
       wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; refreshTitleIcon(); });
+      refreshTitleIcon();
     }
   } catch(e){ /* silently fail if not supported */ }
 }
 function releaseWakeLock(){
-  if(wakeLock){ wakeLock.release(); wakeLock=null; }
+  if(wakeLock){ wakeLock.release(); wakeLock=null; refreshTitleIcon(); }
+}
+function refreshTitleIcon(){
+  setTitle(S.viewingRecipe ? S.viewingRecipe.name : 'Decent Eats');
 }
 // Re-acquire if page becomes visible again (e.g. switching back from another app)
 document.addEventListener('visibilitychange', async()=>{
