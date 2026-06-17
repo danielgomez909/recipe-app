@@ -326,6 +326,10 @@ function releaseWakeLock(){
 }
 function refreshTitleIcon(){
   setTitle(S.viewingRecipe ? S.viewingRecipe.name : 'Decent Eats');
+  const checklistTitle = document.getElementById('checklist-title');
+  if(checklistTitle && S.viewingRecipe){
+    checklistTitle.innerHTML = esc(S.viewingRecipe.name) + (wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':'');
+  }
 }
 // Re-acquire if page becomes visible again (e.g. switching back from another app)
 document.addEventListener('visibilitychange', async()=>{
@@ -349,6 +353,13 @@ function closeChecklist(){
   document.getElementById('app').style.display='';
 }
 
+function checklistItemHtml(type, idx, checked, innerHtml){
+  return `<div class="checklist-item${checked?' checked':''}" data-ctype="${type}" data-cidx="${idx}" onclick="toggleChecklistItem('${type}',${idx})">
+    <div class="checklist-checkbox">${checked?'✓':''}</div>
+    <div class="checklist-text">${innerHtml}</div>
+  </div>`;
+}
+
 function renderChecklist(){
   const r = S.viewingRecipe;
   const { steps, ings } = S.currentDetailData || { steps:[], ings:[] };
@@ -360,29 +371,19 @@ function renderChecklist(){
   const ingItemsHtml = [
     ...solo.map(i => {
       const idx = ingIdx++;
-      const checked = checklistState.checkedIngs.has(idx);
-      return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistIng(${idx})">
-        <div class="checklist-checkbox">${checked?'✓':''}</div>
-        <div class="checklist-text"><span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}</div>
-      </div>`;
+      const inner = `<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}`;
+      return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     }),
     ...Object.values(groups).map(grp => {
-      const optionsHtml = grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
       const idx = ingIdx++;
-      const checked = checklistState.checkedIngs.has(idx);
-      return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistIng(${idx})">
-        <div class="checklist-checkbox">${checked?'✓':''}</div>
-        <div class="checklist-text">${optionsHtml}</div>
-      </div>`;
+      const inner = grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
+      return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     })
   ].join('');
 
   const stepItemsHtml = steps.map((s,idx) => {
-    const checked = checklistState.checkedSteps.has(idx);
-    return `<div class="checklist-item${checked?' checked':''}" onclick="toggleChecklistStep(${idx})">
-      <div class="checklist-checkbox">${checked?'✓':''}</div>
-      <div class="checklist-text"><strong>${s.step_number}.</strong> ${esc(s.instruction)}</div>
-    </div>`;
+    const inner = `<strong>${s.step_number}.</strong> ${esc(s.instruction)}`;
+    return checklistItemHtml('step', idx, checklistState.checkedSteps.has(idx), inner);
   }).join('');
 
   const totalItems = ingIdx + steps.length;
@@ -392,25 +393,37 @@ function renderChecklist(){
     <div class="checklist-overlay">
       <div class="checklist-header">
         <button class="topbar-back" onclick="closeChecklist()" aria-label="Close">&#8592;</button>
-        <h2>${esc(r.name)}</h2>
+        <h2 id="checklist-title">${esc(r.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':''}</h2>
       </div>
       <div class="checklist-body">
         ${ingItemsHtml ? `<div class="checklist-section-title">Ingredients</div>${ingItemsHtml}` : ''}
         ${stepItemsHtml ? `<div class="checklist-section-title">Program</div>${stepItemsHtml}` : ''}
       </div>
-      <div class="checklist-progress">${checkedCount} of ${totalItems} complete</div>
+      <div class="checklist-progress" id="checklist-progress">${checkedCount} of ${totalItems} complete</div>
     </div>`;
 }
 
-function toggleChecklistIng(idx){
-  if(checklistState.checkedIngs.has(idx)) checklistState.checkedIngs.delete(idx);
-  else checklistState.checkedIngs.add(idx);
-  renderChecklist();
-}
-function toggleChecklistStep(idx){
-  if(checklistState.checkedSteps.has(idx)) checklistState.checkedSteps.delete(idx);
-  else checklistState.checkedSteps.add(idx);
-  renderChecklist();
+function toggleChecklistItem(type, idx){
+  const set = type==='ing' ? checklistState.checkedIngs : checklistState.checkedSteps;
+  const nowChecked = !set.has(idx);
+  if(nowChecked) set.add(idx); else set.delete(idx);
+
+  // Update just this item's DOM, no full re-render (preserves scroll position)
+  const el = document.querySelector(`.checklist-item[data-ctype="${type}"][data-cidx="${idx}"]`);
+  if(el){
+    el.classList.toggle('checked', nowChecked);
+    el.querySelector('.checklist-checkbox').textContent = nowChecked ? '✓' : '';
+  }
+  // Update progress counter only
+  const total = (S.currentDetailData?.ings?.length||0) + (S.currentDetailData?.steps?.length||0);
+  // recompute total properly accounting for or-groups collapsing into one item
+  const { steps, ings } = S.currentDetailData || { steps:[], ings:[] };
+  const soloCount = ings.filter(i=>i.or_group==null).length;
+  const groupCount = new Set(ings.filter(i=>i.or_group!=null).map(i=>i.or_group)).size;
+  const totalItems = soloCount + groupCount + steps.length;
+  const checkedCount = checklistState.checkedIngs.size + checklistState.checkedSteps.size;
+  const prog = document.getElementById('checklist-progress');
+  if(prog) prog.textContent = `${checkedCount} of ${totalItems} complete`;
 }
 
 function renderRecipeList(){
