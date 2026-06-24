@@ -153,10 +153,33 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .new-ing-form { background: var(--cream2); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 6px; }
 .new-ing-form .row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; margin-bottom: 8px; }
 .new-ing-form input, .new-ing-form select { padding: 7px 10px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--brown); outline: none; font-family: 'DM Sans', sans-serif; width: 100%; }
+/* Login screen */
+.login-screen { position: fixed; inset: 0; background: var(--cream); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; }
+.login-logo { font-family: 'Lora', serif; font-size: 48px; font-weight: 600; color: white; background: var(--accent); width: 100px; height: 100px; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin-bottom: 28px; letter-spacing: -2px; }
+.login-title { font-family: 'Lora', serif; font-size: 28px; font-weight: 600; color: var(--brown); margin-bottom: 6px; }
+.login-subtitle { font-size: 14px; color: var(--brown-light); margin-bottom: 32px; }
+.login-form { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; }
+.login-input { width: 100%; padding: 12px 16px; font-size: 16px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border-strong); border-radius: var(--radius); background: white; color: var(--brown); outline: none; text-align: center; letter-spacing: .05em; }
+.login-input:focus { border-color: var(--accent); }
+.login-btn { width: 100%; padding: 13px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer; transition: background .15s; }
+.login-btn:hover { background: var(--brown-mid); }
+.login-error { font-size: 13px; color: #dc3545; text-align: center; min-height: 18px; }
 </style>
 </head>
 <body>
-<div class="app" id="app">
+<div id="login-screen" class="login-screen" style="display:none">
+  <div class="login-logo">DE</div>
+  <div class="login-title">Decent Eats</div>
+  <div class="login-subtitle">Enter your passphrase to continue</div>
+  <div class="login-form">
+    <input class="login-input" id="login-input" type="password" placeholder="Passphrase" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')attemptLogin()">
+    <button class="login-btn" onclick="attemptLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none">
   <div class="topbar">
     <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Back">&#8592;</button>
     <div class="topbar-title" id="topbar-title">Decent Eats</div>
@@ -1033,7 +1056,51 @@ async function ensureServesColumn(){
   }
 }
 
-init();
+// ---- Auth ----
+const PASSPHRASE_HASH = 'e572930d76aba6e27324d2ed17461a3f2083ada5d12f992df83586a56f66ee03';
+const AUTH_KEY = 'de_auth_v1';
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkAuth(){
+  const stored = localStorage.getItem(AUTH_KEY);
+  if(stored === PASSPHRASE_HASH){
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  setTimeout(()=>document.getElementById('login-input').focus(), 100);
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  init();
+}
+
+async function attemptLogin(){
+  const val = document.getElementById('login-input').value;
+  const errEl = document.getElementById('login-error');
+  const hash = await sha256(val);
+  if(hash === PASSPHRASE_HASH){
+    localStorage.setItem(AUTH_KEY, hash);
+    errEl.textContent='';
+    showApp();
+  } else {
+    errEl.textContent='Incorrect passphrase. Please try again.';
+    document.getElementById('login-input').select();
+  }
+}
+
+checkAuth();
 </script>
 </body>
 </html>
