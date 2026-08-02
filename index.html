@@ -1002,17 +1002,17 @@ function renderMealChecklist(){
       const solo=ings.filter(i=>i.or_group==null);
       const groups={};
       for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
-      items.push({checkable:false,header:true,label:`<strong>${esc(t.recipes?.name||'Recipe')}</strong>${t.task_note?` \u2014 <em style="font-size:12px;color:var(--brown-light)">${esc(t.task_note)}</em>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
-      if(ings.length) items.push({checkable:false,subheader:true,label:'Ingredients'});
-      solo.forEach(i=>items.push({checkable:true,label:`<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`}));
-      Object.values(groups).forEach(grp=>items.push({checkable:true,label:grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ')}));
-      if(steps.length) items.push({checkable:false,subheader:true,label:'Program'});
-      steps.forEach(s=>items.push({checkable:true,label:`<strong>${s.step_number}.</strong> ${esc(s.instruction)}`}));
+      items.push({checkable:false,itemStyle:'recipe-header',label:`${esc(t.recipes?.name||'Recipe')}${t.task_note?` <span style="font-size:12px;font-weight:400;font-style:italic;color:var(--brown-light)"> \u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;font-weight:400;color:var(--brown-light)">(optional)</span>':''}`});
+      if(ings.length) items.push({checkable:false,itemStyle:'recipe-subheader',label:'Ingredients'});
+      solo.forEach(i=>items.push({checkable:true,itemStyle:'nested',label:`<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`}));
+      Object.values(groups).forEach(grp=>items.push({checkable:true,itemStyle:'nested',label:grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ')}));
+      if(steps.length) items.push({checkable:false,itemStyle:'recipe-subheader',label:'Program'});
+      steps.forEach(s=>items.push({checkable:true,itemStyle:'nested',label:`<strong>${s.step_number}.</strong> ${esc(s.instruction)}`}));
     } else if(type==='ingredient'){
       const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||'';
-      items.push({checkable:true,label:`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">\u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
+      items.push({checkable:true,itemStyle:'meal-ingredient',label:`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic"> \u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
     } else {
-      items.push({checkable:true,label:esc(t.task_note||'Task')+(t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':'')});
+      items.push({checkable:true,itemStyle:'meal-task',label:esc(t.task_note||'Task')+(t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':'')});
     }
   });
   S.mealChecklistItems=items;
@@ -1021,12 +1021,16 @@ function renderMealChecklist(){
   let ci=0;
   const itemsHtml=items.map(item=>{
     if(!item.checkable){
-      if(item.header) return `<div style="font-size:15px;font-weight:600;border-top:1px solid var(--border);padding:12px 0 4px;margin-top:4px">${item.label}</div>`;
-      return `<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin:10px 0 4px">${item.label}</div>`;
+      if(item.itemStyle==='recipe-header') return `<div style="font-size:16px;font-weight:600;font-family:'Lora',serif;border-top:2px solid var(--accent);padding:14px 0 4px;margin-top:12px;color:var(--brown)">${item.label}</div>`;
+      return `<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin:10px 0 4px;padding-left:12px">${item.label}</div>`;
     }
     const idx=ci++;
     const isChecked=mealChecklistState.checked.has(idx);
-    return `<div class="checklist-item${isChecked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx},${total})"><div class="checklist-checkbox">${isChecked?'&#10003;':''}</div><div class="checklist-text">${item.label}</div></div>`;
+    let extraStyle='';
+    if(item.itemStyle==='nested') extraStyle='margin-left:12px;border-left:2px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;';
+    else if(item.itemStyle==='meal-ingredient') extraStyle='border-left:3px solid var(--accent);';
+    else if(item.itemStyle==='meal-task') extraStyle='border-left:3px solid var(--green);';
+    return `<div class="checklist-item${isChecked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx},${total})" style="${extraStyle}"><div class="checklist-checkbox">${isChecked?'&#10003;':''}</div><div class="checklist-text">${item.label}</div></div>`;
   }).join('');
   document.getElementById('checklist-root').innerHTML=`<div class="checklist-overlay"><div class="checklist-header"><button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button><h2 id="checklist-title">${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">&#128065;</span>':''}</h2></div><div class="checklist-body">${itemsHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks.</div>'}</div><div class="checklist-progress" id="meal-checklist-progress">${checkedCt} of ${total} complete</div></div>`;
 }
