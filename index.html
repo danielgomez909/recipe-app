@@ -311,7 +311,8 @@ function render(){
     document.getElementById('sub-nav').style.display='none';
     renderXref();
   } else if(S.tab==='drafts'){
-    addBtn.style.display='none';
+    addBtn.style.display=''; addBtn.textContent='+ Draft';
+    addBtn.onclick=openAddDraft;
     searchBar.style.display='';
     document.getElementById('search-input').placeholder='Search draft recipes...';
     document.getElementById('sub-nav').style.display='none';
@@ -474,9 +475,41 @@ function renderDraftList(){
   const c=document.getElementById('content');
   let list=S.drafts;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(r=>r.name.toLowerCase().includes(q)); }
-  const intro = `<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px;padding:6px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Imported from the old blog. Tap a draft to review, fill in missing details, and clean it up.</div>`;
-  if(!list.length){ c.innerHTML=intro+(S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No drafts left</h3><p>All imported recipes have been cleaned up.</p></div>'); return; }
+  const intro = `<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px;padding:6px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Draft recipes — tap to review and clean up, or use + Draft to add a new one.</div>`;
+  if(!list.length){ c.innerHTML=intro+(S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No drafts</h3><p>Use + Draft to save a recipe idea for later.</p></div>'); return; }
   c.innerHTML=intro+list.map(r=>`<div class="recipe-card" onclick="viewDraft('${r.id}')"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.source||'')}</div></div>`).join('');
+}
+
+function openAddDraft(){
+  openModal(`
+    <div class="modal-header"><div class="modal-title">New draft recipe</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--brown-light);margin-bottom:14px;padding:8px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Save a recipe idea now — add ingredients and steps later via the Draft Recipes tab.</div>
+      <div class="field"><label>Recipe name</label><input id="nd-name" placeholder="e.g. Mom's Pot Roast"></div>
+      <div class="field"><label>Source</label><input id="nd-source" placeholder="URL, book, person..."></div>
+      <div class="field"><label>Notes</label><textarea id="nd-notes" placeholder="Any notes, reminders, or context..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewDraft()">Save draft</button>
+    </div>`);
+}
+
+async function saveNewDraft(){
+  const name = document.getElementById('nd-name').value.trim();
+  if(!name){ toast('Recipe name required'); return; }
+  const source = document.getElementById('nd-source').value.trim();
+  const notes = document.getElementById('nd-notes').value.trim();
+  try{
+    const[created]=await db.post('recipes',{
+      name:`[DRAFT] ${name}`, source:source||null, notes:notes||null, is_draft:true
+    });
+    S.drafts.push(created); S.drafts.sort((a,b)=>a.name.localeCompare(b.name));
+    S.draftCount=S.drafts.length;
+    closeModal();
+    toast(`Draft "${name}" saved`);
+    render();
+  }catch(e){ toast('Error saving draft: '+e.message); }
 }
 
 async function viewDraft(id){
