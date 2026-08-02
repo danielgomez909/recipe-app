@@ -991,10 +991,10 @@ function closeMealChecklist(){
   document.getElementById('app').style.display='';
 }
 
-function renderMealChecklist(){
-  const m=S.viewingMeal;
+function buildMealChecklistBlocks(){
+  // Build blocks — each block is a moveable unit (recipe+subitems, or single ingredient/task)
   const tasks=S.currentMealTasks||[];
-  const items=[];
+  const blocks=[];
   tasks.forEach(t=>{
     const type=t.meal_task_types?.name||'task';
     if(type==='recipe'&&t.recipe_id&&S.mealChecklistExpanded?.[t.recipe_id]){
@@ -1002,37 +1002,72 @@ function renderMealChecklist(){
       const solo=ings.filter(i=>i.or_group==null);
       const groups={};
       for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
+      const items=[];
       items.push({checkable:false,itemStyle:'recipe-header',label:`${esc(t.recipes?.name||'Recipe')}${t.task_note?` <span style="font-size:12px;font-weight:400;font-style:italic;color:var(--brown-light)"> \u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;font-weight:400;color:var(--brown-light)">(optional)</span>':''}`});
       if(ings.length) items.push({checkable:false,itemStyle:'recipe-subheader',label:'Ingredients'});
       solo.forEach(i=>items.push({checkable:true,itemStyle:'nested',label:`<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`}));
       Object.values(groups).forEach(grp=>items.push({checkable:true,itemStyle:'nested',label:grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ')}));
       if(steps.length) items.push({checkable:false,itemStyle:'recipe-subheader',label:'Program'});
       steps.forEach(s=>items.push({checkable:true,itemStyle:'nested',label:`<strong>${s.step_number}.</strong> ${esc(s.instruction)}`}));
+      blocks.push({type:'recipe',items});
     } else if(type==='ingredient'){
       const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||'';
-      items.push({checkable:true,itemStyle:'meal-ingredient',label:`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic"> \u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
+      blocks.push({type:'ingredient',items:[{checkable:true,itemStyle:'meal-ingredient',label:`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic"> \u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`}]});
     } else {
-      items.push({checkable:true,itemStyle:'meal-task',label:esc(t.task_note||'Task')+(t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':'')});
+      blocks.push({type:'task',items:[{checkable:true,itemStyle:'meal-task',label:esc(t.task_note||'Task')+(t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':'')}]});
     }
   });
-  S.mealChecklistItems=items;
-  const total=items.filter(i=>i.checkable).length;
+  return blocks;
+}
+
+function moveMealBlock(blockIdx, dir){
+  const blocks=S.mealChecklistBlocks;
+  const newIdx=blockIdx+dir;
+  if(newIdx<0||newIdx>=blocks.length) return;
+  const scrollTop=document.querySelector('.checklist-body')?.scrollTop||0;
+  [blocks[blockIdx],blocks[newIdx]]=[blocks[newIdx],blocks[blockIdx]];
+  renderMealChecklistFromBlocks(scrollTop);
+}
+
+function renderMealChecklist(){
+  S.mealChecklistBlocks=buildMealChecklistBlocks();
+  renderMealChecklistFromBlocks(0);
+}
+
+function renderMealChecklistFromBlocks(scrollTop){
+  const m=S.viewingMeal;
+  const blocks=S.mealChecklistBlocks;
+  const total=blocks.flatMap(b=>b.items).filter(i=>i.checkable).length;
   const checkedCt=mealChecklistState.checked.size;
   let ci=0;
-  const itemsHtml=items.map(item=>{
-    if(!item.checkable){
-      if(item.itemStyle==='recipe-header') return `<div style="font-size:16px;font-weight:600;font-family:'Lora',serif;border-top:2px solid var(--accent);padding:14px 0 4px;margin-top:12px;color:var(--brown)">${item.label}</div>`;
-      return `<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin:10px 0 4px;padding-left:12px">${item.label}</div>`;
-    }
-    const idx=ci++;
-    const isChecked=mealChecklistState.checked.has(idx);
-    let extraStyle='';
-    if(item.itemStyle==='nested') extraStyle='margin-left:12px;border-left:2px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;';
-    else if(item.itemStyle==='meal-ingredient') extraStyle='border-left:3px solid var(--accent);';
-    else if(item.itemStyle==='meal-task') extraStyle='border-left:3px solid var(--green);';
-    return `<div class="checklist-item${isChecked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx},${total})" style="${extraStyle}"><div class="checklist-checkbox">${isChecked?'&#10003;':''}</div><div class="checklist-text">${item.label}</div></div>`;
+  const bodyHtml=blocks.map((block,bi)=>{
+    const isFirst=bi===0; const isLast=bi===blocks.length-1;
+    const moveButtons=`<div style="display:flex;flex-direction:column;gap:2px;margin-left:6px;flex-shrink:0">
+      <button onclick="event.stopPropagation();moveMealBlock(${bi},-1)" ${isFirst?'disabled':''} style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 6px;font-size:11px;color:${isFirst?'var(--border-strong)':'var(--brown-light)'}">&#8593;</button>
+      <button onclick="event.stopPropagation();moveMealBlock(${bi},1)" ${isLast?'disabled':''} style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 6px;font-size:11px;color:${isLast?'var(--border-strong)':'var(--brown-light)'}">&#8595;</button>
+    </div>`;
+    const itemsHtml=block.items.map(item=>{
+      if(!item.checkable){
+        if(item.itemStyle==='recipe-header') return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:600;font-family:'Lora',serif;padding:14px 0 4px;margin-top:4px;color:var(--brown)"><span>${item.label}</span>${moveButtons}</div>`;
+        return `<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--brown-light);margin:10px 0 4px;padding-left:12px">${item.label}</div>`;
+      }
+      const idx=ci++;
+      const isChecked=mealChecklistState.checked.has(idx);
+      let extraStyle='';
+      if(item.itemStyle==='nested') extraStyle='margin-left:12px;border-left:2px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0;';
+      else if(item.itemStyle==='meal-ingredient') extraStyle='border-left:3px solid var(--accent);';
+      else if(item.itemStyle==='meal-task') extraStyle='border-left:3px solid var(--green);';
+      // For single-item blocks (ingredient/task), show move buttons inline
+      const isTopLevel=item.itemStyle==='meal-ingredient'||item.itemStyle==='meal-task';
+      return `<div class="checklist-item${isChecked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx},${total})" style="${extraStyle}"><div class="checklist-checkbox">${isChecked?'&#10003;':''}</div><div class="checklist-text">${item.label}</div>${isTopLevel?moveButtons:''}</div>`;
+    }).join('');
+    return `<div style="margin-bottom:8px">${itemsHtml}</div>`;
   }).join('');
-  document.getElementById('checklist-root').innerHTML=`<div class="checklist-overlay"><div class="checklist-header"><button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button><h2 id="checklist-title">${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">&#128065;</span>':''}</h2></div><div class="checklist-body">${itemsHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks.</div>'}</div><div class="checklist-progress" id="meal-checklist-progress">${checkedCt} of ${total} complete</div></div>`;
+
+  const root=document.getElementById('checklist-root');
+  root.innerHTML=`<div class="checklist-overlay"><div class="checklist-header"><button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button><h2 id="checklist-title">${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">&#128065;</span>':''}</h2></div><div class="checklist-body" id="meal-cl-body">${bodyHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks.</div>'}</div><div class="checklist-progress" id="meal-checklist-progress">${checkedCt} of ${total} complete</div></div>`;
+  const body=document.getElementById('meal-cl-body');
+  if(body&&scrollTop) body.scrollTop=scrollTop;
 }
 
 function toggleMealChecklistItem(idx,total){
