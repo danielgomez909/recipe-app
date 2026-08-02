@@ -266,9 +266,9 @@ async function init(){
     db.get('units?order=type,system,name'),
     db.get('ingredient_types?order=name'),
     db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)'),
-    db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,created_at'),
+    db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,prep_time,cook_time,total_time,created_at'),
     db.get('tags?order=name'),
-    db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,raw_import_text,import_source_url')
+    db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,prep_time,cook_time,total_time,raw_import_text,import_source_url')
   ]);
   S.units=units; S.types=types; S.ingredients=ings; S.recipes=recipes; S.tags=tags;
   S.drafts=drafts; S.draftCount=drafts.length;
@@ -696,7 +696,8 @@ function renderDetailIngredientsAndRest(r){
       <button class="btn btn-sm" onclick="openEditRecipe('${r.id}')">Edit</button>
       <button class="btn btn-sm btn-danger" onclick="confirmDelete('${r.id}')">Delete</button>
     </div>
-    <div class="detail-section"><div class="detail-section-header"><h4>Source${r.serves?' &nbsp;·&nbsp; Serves '+esc(r.serves):''}</h4></div><div class="detail-section-body">${sourceHtml}</div></div>
+    <div class="detail-section"><div class="detail-section-header"><h4>Source${r.serves?' &nbsp;·&nbsp; Serves '+esc(r.serves):''}${r.prep_time||r.cook_time||r.total_time?` &nbsp;·&nbsp; ${[r.prep_time?'Prep '+esc(r.prep_time):'',r.cook_time?'Cook '+esc(r.cook_time):'',r.total_time?'Total '+esc(r.total_time):''].filter(Boolean).join(' &nbsp;·&nbsp; ')}`:''}
+</h4></div><div class="detail-section-body">${sourceHtml}</div></div>
     <div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>
     <div class="detail-section">
       <div class="detail-section-header" style="display:flex;align-items:center;justify-content:space-between">
@@ -744,7 +745,7 @@ async function saveNewIngredient(name, typeId){
 // ---- Recipe Modal (Add/Edit) — stable form state ----
 let FM = {}; // form model, stable across re-renders
 
-function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:'',prepNote:''}],steps:[{seq:1,text:''}],selectedTags:[],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
+function openAddRecipe(){ FM={name:'',source:'',serves:'',prepTime:'',cookTime:'',totalTime:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:'',prepNote:''}],steps:[{seq:1,text:''}],selectedTags:[],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
 
 async function openEditRecipe(id){
   const r=S.recipes.find(x=>x.id===id);
@@ -754,7 +755,7 @@ async function openEditRecipe(id){
     db.get(`recipe_tags?recipe_id=eq.${id}&select=tag_id`)
   ]);
   FM={
-    name:r.name||'', source:r.source||'', serves:r.serves||'', notes:r.notes||'',
+    name:r.name||'', source:r.source||'', serves:r.serves||'', prepTime:r.prep_time||'', cookTime:r.cook_time||'', totalTime:r.total_time||'', notes:r.notes||'',
     ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):'',prepNote:i.prep_note||''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
     steps: steps.length ? steps.map(s=>({seq:s.step_number,text:s.instruction})) : [{seq:1,text:''}],
     selectedTags: recipeTags.map(rt=>rt.tag_id),
@@ -803,6 +804,14 @@ function renderRecipeModal(editId){
       <div class="row2">
         <div class="field"><label>Source</label><input id="fm-source" value="${esc(FM.source)}" placeholder="URL, book, person..." oninput="FM.source=this.value"></div>
         <div class="field"><label>Serves</label><input id="fm-serves" value="${esc(FM.serves)}" placeholder="e.g. 4 or 6–8" oninput="FM.serves=this.value"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Prep time</label><input id="fm-prep-time" value="${esc(FM.prepTime||'')}" placeholder="e.g. 15 min" oninput="FM.prepTime=this.value"></div>
+        <div class="field"><label>Cook time</label><input id="fm-cook-time" value="${esc(FM.cookTime||'')}" placeholder="e.g. 45 min" oninput="FM.cookTime=this.value"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Total time</label><input id="fm-total-time" value="${esc(FM.totalTime||'')}" placeholder="e.g. 1 hr" oninput="FM.totalTime=this.value"></div>
+        <div class="field"></div>
       </div>
 
       <div class="section-label">Ingredients</div>
@@ -1009,6 +1018,9 @@ function syncFMFromDOM(){
   const n=document.getElementById('fm-name'); if(n)FM.name=n.value;
   const s=document.getElementById('fm-source'); if(s)FM.source=s.value;
   const sv=document.getElementById('fm-serves'); if(sv)FM.serves=sv.value;
+  const pt=document.getElementById('fm-prep-time'); if(pt)FM.prepTime=pt.value;
+  const ct=document.getElementById('fm-cook-time'); if(ct)FM.cookTime=ct.value;
+  const tt=document.getElementById('fm-total-time'); if(tt)FM.totalTime=tt.value;
   const nt=document.getElementById('fm-notes'); if(nt)FM.notes=nt.value;
   document.querySelectorAll('[id^="is-"]').forEach(el=>{ const i=parseInt(el.id.slice(3)); if(FM.ings[i])FM.ings[i].ingName=el.value; });
   document.querySelectorAll('#steps-list textarea').forEach((el,i)=>{ if(FM.steps[i]!==undefined)FM.steps[i].text=el.value; });
@@ -1021,7 +1033,7 @@ async function saveRecipe(editId){
   try{
     let recipeId=editId;
     let finalName=FM.name.trim();
-    const payload={name:finalName,source:FM.source.trim()||null,serves:FM.serves.trim()||null,notes:FM.notes.trim()||null};
+    const payload={name:finalName,source:FM.source.trim()||null,serves:FM.serves.trim()||null,prep_time:FM.prepTime.trim()||null,cook_time:FM.cookTime.trim()||null,total_time:FM.totalTime.trim()||null,notes:FM.notes.trim()||null};
     if(FM.isDraftCleanup){
       // strip leading [DRAFT] prefix if still present, and clear draft status
       finalName=finalName.replace(/^\[DRAFT\]\s*/,'').trim();
@@ -1049,7 +1061,7 @@ async function saveRecipe(editId){
     // save tags
     if(editId) await db.del(`recipe_tags?recipe_id=eq.${editId}`);
     if(FM.selectedTags.length) await db.post('recipe_tags', FM.selectedTags.map(tid=>({recipe_id:recipeId,tag_id:tid})));
-    S.recipes=await db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,created_at');
+    S.recipes=await db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,prep_time,cook_time,total_time,created_at');
     if(FM.isDraftCleanup){
       S.drafts=S.drafts.filter(d=>d.id!==recipeId);
       S.draftCount=S.drafts.length;
