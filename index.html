@@ -191,6 +191,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="nav-btn" onclick="switchTab('xref')">Cross-ref</button>
     <button class="nav-btn" onclick="switchTab('tags')">Tags</button>
     <button class="nav-btn" onclick="switchTab('drafts')">Draft Recipes</button>
+    <button class="nav-btn" onclick="switchTab('sidebars')">Sidebars</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
     <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
@@ -259,19 +260,20 @@ function scaleAndFormatQty(qty, unit, scale){
 }
 
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, recipes:[], drafts:[], draftCount:0, units:[], types:[], ingredients:[], tags:[], searchQ:'', currentScale:1 };
+const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, recipes:[], drafts:[], draftCount:0, sidebars:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', currentScale:1 };
 
 async function init(){
-  const [units,types,ings,recipes,tags,drafts] = await Promise.all([
+  const [units,types,ings,recipes,tags,drafts,sidebars] = await Promise.all([
     db.get('units?order=type,system,name'),
     db.get('ingredient_types?order=name'),
     db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)'),
     db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,prep_time,cook_time,total_time,video_url,created_at'),
     db.get('tags?order=name'),
-    db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,prep_time,cook_time,total_time,video_url,raw_import_text,import_source_url')
+    db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,prep_time,cook_time,total_time,video_url,raw_import_text,import_source_url'),
+    db.get('sidebars?order=title&select=id,title,body,created_at')
   ]);
   S.units=units; S.types=types; S.ingredients=ings; S.recipes=recipes; S.tags=tags;
-  S.drafts=drafts; S.draftCount=drafts.length;
+  S.drafts=drafts; S.draftCount=drafts.length; S.sidebars=sidebars;
   render();
 }
 
@@ -286,6 +288,12 @@ function render(){
     nav.style.display='none'; searchBar.style.display='none';
     setTitle(S.viewingRecipe.name);
     renderDetail(); return;
+  }
+  if(S.viewingSidebar){
+    backBtn.style.display=''; addBtn.style.display='none';
+    nav.style.display='none'; searchBar.style.display='none';
+    setTitle(S.viewingSidebar.title);
+    renderSidebarDetail(); return;
   }
   backBtn.style.display='none'; nav.style.display='';
   setTitle('Decent Eats');
@@ -317,6 +325,13 @@ function render(){
     document.getElementById('search-input').placeholder='Search draft recipes...';
     document.getElementById('sub-nav').style.display='none';
     renderDraftList();
+  } else if(S.tab==='sidebars'){
+    addBtn.style.display=''; addBtn.textContent='+ Sidebar';
+    addBtn.onclick=openAddSidebar;
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search sidebars...';
+    document.getElementById('sub-nav').style.display='none';
+    renderSidebarList();
   } else if(S.tab==='tags'){
     document.getElementById('sub-nav').style.display='';
     searchBar.style.display='none';
@@ -333,9 +348,9 @@ function render(){
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
-  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.searchQ=''; releaseWakeLock();
+  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.searchQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)));
   render();
 }
 
@@ -371,7 +386,11 @@ document.addEventListener('visibilitychange', async()=>{
   if(document.visibilityState==='visible' && S.viewingRecipe) await acquireWakeLock();
 });
 
-function goBack(){ releaseWakeLock(); S.viewingRecipe=null; S.tab='recipes'; render(); }
+function goBack(){
+  releaseWakeLock();
+  if(S.viewingSidebar){ S.viewingSidebar=null; S.tab='sidebars'; render(); return; }
+  S.viewingRecipe=null; S.tab='recipes'; render();
+}
 
 // ---- Checklist mode ----
 let checklistState = { checkedIngs: new Set(), checkedSteps: new Set() };
@@ -584,6 +603,157 @@ function renderXrefFiltered(){
     html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
   }
   c.innerHTML=html;
+}
+
+// ---- Markdown renderer (subset) ----
+function renderMarkdown(text){
+  if(!text) return '';
+  let html = esc(text);
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h4 style="font-family:Lora,serif;font-size:15px;margin:12px 0 6px;color:var(--brown)">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="font-family:Lora,serif;font-size:17px;margin:16px 0 8px;color:var(--brown)">$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h2 style="font-family:Lora,serif;font-size:20px;margin:20px 0 10px;color:var(--brown)">$1</h2>');
+  // Bold and italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--accent)">$1</a>');
+  // Unordered lists
+  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>(\n|$))+/g, s => `<ul style="padding-left:18px;margin:8px 0">${s}</ul>`);
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Paragraphs - double newlines
+  html = html.replace(/\n\n/g, '</p><p style="margin-bottom:10px">');
+  html = '<p style="margin-bottom:10px">' + html + '</p>';
+  // Single newlines to br
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// ---- Sidebars ----
+function renderSidebarList(){
+  const c=document.getElementById('content');
+  let list=S.sidebars;
+  if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(s=>s.title.toLowerCase().includes(q)); }
+  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No sidebars yet</h3><p>Add your first cooking note or essay.</p></div>'; return; }
+  c.innerHTML=list.map(s=>`<div class="recipe-card" onclick="viewSidebar('${s.id}')"><h3>${esc(s.title)}</h3><div class="meta">${new Date(s.created_at).toLocaleDateString()}</div></div>`).join('');
+}
+
+async function viewSidebar(id){
+  S.viewingSidebar=S.sidebars.find(s=>s.id===id);
+  render();
+}
+
+async function renderSidebarDetail(){
+  const c=document.getElementById('content');
+  const s=S.viewingSidebar;
+  // load tags
+  const sidebarTags = await db.get(`sidebar_tags?sidebar_id=eq.${s.id}&select=tag_id`);
+  const tagNames = sidebarTags.map(st=>S.tags.find(t=>t.id===st.tag_id)).filter(Boolean);
+  const tagsHtml = tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
+  c.innerHTML=`
+    <div class="detail-actions">
+      <button class="btn btn-sm" onclick="openEditSidebar('${s.id}')">Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmDeleteSidebar('${s.id}')">Delete</button>
+    </div>
+    ${tagNames.length?`<div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>`:''}
+    <div class="detail-section"><div class="detail-section-body" style="line-height:1.7;font-size:15px">${renderMarkdown(s.body)}</div></div>`;
+}
+
+const MD_CHEATSHEET = `<div style="background:var(--cream2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-top:6px;font-size:12px;color:var(--brown-light)">
+  <div style="font-weight:500;margin-bottom:6px;color:var(--brown-light);text-transform:uppercase;letter-spacing:.05em;font-size:10px">Markdown reference</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px">
+    <span><code style="font-size:11px"># Heading 1</code></span><span><code style="font-size:11px">## Heading 2</code></span>
+    <span><code style="font-size:11px">**bold**</code></span><span><code style="font-size:11px">*italic*</code></span>
+    <span><code style="font-size:11px">- bullet item</code></span><span><code style="font-size:11px">1. numbered item</code></span>
+    <span colspan="2"><code style="font-size:11px">[link text](https://url.com)</code></span>
+  </div>
+  <div style="margin-top:4px">Blank line between paragraphs.</div>
+</div>`;
+
+function openAddSidebar(){
+  openModal(`
+    <div class="modal-header"><div class="modal-title">New sidebar</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Title</label><input id="sb-title" placeholder="e.g. On Knife Skills"></div>
+      <div class="field"><label>Tags</label>
+        ${S.tags.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px" id="sb-tag-chips">
+          ${S.tags.map(t=>`<span class="tag-chip" data-tag-name="${esc(t.name.toLowerCase())}" onclick="toggleSbTag(${t.id},this)">${esc(t.name)}</span>`).join('')}
+        </div>`:'<div style="font-size:13px;color:var(--brown-light);margin-bottom:8px">No tags yet.</div>'}
+      </div>
+      <div class="field"><label>Body</label>
+        <textarea id="sb-body" style="min-height:200px;font-family:DM Mono,monospace;font-size:13px" placeholder="Write your sidebar content here using Markdown..."></textarea>
+        ${MD_CHEATSHEET}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSidebar(null)">Save sidebar</button>
+    </div>`);
+  window._sbSelectedTags=[];
+}
+
+async function openEditSidebar(id){
+  const s=S.sidebars.find(x=>x.id===id);
+  const sidebarTags=await db.get(`sidebar_tags?sidebar_id=eq.${id}&select=tag_id`);
+  window._sbSelectedTags=sidebarTags.map(st=>st.tag_id);
+  openModal(`
+    <div class="modal-header"><div class="modal-title">Edit sidebar</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Title</label><input id="sb-title" value="${esc(s.title)}"></div>
+      <div class="field"><label>Tags</label>
+        ${S.tags.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px" id="sb-tag-chips">
+          ${S.tags.map(t=>`<span class="tag-chip${window._sbSelectedTags.includes(t.id)?' active':''}" data-tag-name="${esc(t.name.toLowerCase())}" onclick="toggleSbTag(${t.id},this)">${esc(t.name)}</span>`).join('')}
+        </div>`:'<div style="font-size:13px;color:var(--brown-light);margin-bottom:8px">No tags yet.</div>'}
+      </div>
+      <div class="field"><label>Body</label>
+        <textarea id="sb-body" style="min-height:200px;font-family:DM Mono,monospace;font-size:13px">${esc(s.body||'')}</textarea>
+        ${MD_CHEATSHEET}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSidebar('${id}')">Save changes</button>
+    </div>`);
+}
+
+function toggleSbTag(tagId, el){
+  if(!window._sbSelectedTags) window._sbSelectedTags=[];
+  const idx=window._sbSelectedTags.indexOf(tagId);
+  if(idx===-1){ window._sbSelectedTags.push(tagId); el.classList.add('active'); }
+  else { window._sbSelectedTags.splice(idx,1); el.classList.remove('active'); }
+}
+
+async function saveSidebar(editId){
+  const title=document.getElementById('sb-title').value.trim();
+  if(!title){ toast('Title required'); return; }
+  const body=document.getElementById('sb-body').value.trim();
+  try{
+    let sid=editId;
+    if(editId){
+      await db.patch(`sidebars?id=eq.${editId}`,{title,body:body||null});
+    } else {
+      const[created]=await db.post('sidebars',{title,body:body||null});
+      sid=created.id;
+    }
+    // save tags
+    if(editId) await db.del(`sidebar_tags?sidebar_id=eq.${editId}`);
+    if(window._sbSelectedTags?.length) await db.post('sidebar_tags', window._sbSelectedTags.map(tid=>({sidebar_id:sid,tag_id:tid})));
+    S.sidebars=await db.get('sidebars?order=title&select=id,title,body,created_at');
+    if(editId) S.viewingSidebar=S.sidebars.find(s=>s.id===editId);
+    closeModal(); toast(editId?'Sidebar updated!':'Sidebar saved!'); render();
+  }catch(e){ toast('Error saving: '+e.message); }
+}
+
+async function confirmDeleteSidebar(id){
+  if(!confirm('Delete this sidebar? Cannot be undone.'))return;
+  try{
+    await db.del(`sidebars?id=eq.${id}`);
+    S.sidebars=S.sidebars.filter(s=>s.id!==id);
+    S.viewingSidebar=null; S.tab='sidebars';
+    toast('Sidebar deleted'); render();
+  }catch(e){ toast('Error deleting'); }
 }
 
 async function renderTagList(){
