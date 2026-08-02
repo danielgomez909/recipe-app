@@ -260,7 +260,7 @@ function scaleAndFormatQty(qty, unit, scale){
 }
 
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, recipes:[], drafts:[], draftCount:0, sidebars:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', currentScale:1 };
+const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, recipes:[], drafts:[], draftCount:0, sidebars:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
 
 async function init(){
   const [units,types,ings,recipes,tags,drafts,sidebars] = await Promise.all([
@@ -317,7 +317,7 @@ function render(){
     searchBar.style.display='';
     document.getElementById('search-input').placeholder='Search ingredients or recipes...';
     document.getElementById('sub-nav').style.display='none';
-    renderXref();
+    if(S.xrefData) renderXrefWithUI(); else renderXref();
   } else if(S.tab==='drafts'){
     addBtn.style.display=''; addBtn.textContent='+ Draft';
     addBtn.onclick=openAddDraft;
@@ -348,7 +348,7 @@ function render(){
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
-  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.searchQ=''; releaseWakeLock();
+  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
   document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)));
   render();
@@ -572,23 +572,141 @@ async function renderXref(){
       if(!S.xrefData[ing.id])S.xrefData[ing.id]={name:ing.name,recipes:{}};
       S.xrefData[ing.id].recipes[rec.id]=rec.name;
     }
-    renderXrefFiltered();
+    renderXrefWithUI();
   } catch(e){ c.innerHTML='<p>Error loading.</p>'; }
 }
 
-function renderXrefFiltered(){
+function renderXrefWithUI(){
   const c=document.getElementById('content');
+  const compoundBar=`<div style="margin-bottom:14px">
+    <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:5px">Compound search</div>
+    <input id="compound-search" value="${esc(S.compoundQ||'')}" placeholder="e.g. Shrimp && Oil  or  Chicken || Pork" style="width:100%;padding:8px 12px;font-size:13px;font-family:'DM Mono',monospace;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none" oninput="S.compoundQ=this.value;renderXrefFiltered()">
+    <div style="font-size:11px;color:var(--brown-light);margin-top:4px"><code style="font-size:11px">&&</code> = AND &nbsp; <code style="font-size:11px">||</code> = OR &nbsp; <code style="font-size:11px">()</code> = grouping &nbsp;· Case-insensitive partial match</div>
+  </div>`;
+  // prepend compound bar then render filtered results into remaining area
+  c.innerHTML = compoundBar + '<div id="xref-results"></div>';
+  // attach focus to compound input
+  const inp = document.getElementById('compound-search');
+  if(inp) inp.focus();
+  renderXrefFiltered();
+}
+
+function parseCompoundQuery(q){
+  // Returns a function that takes a set of ingredient names (lowercase) and returns true/false
+  // Supports &&, ||, () grouping, and plain text terms
+  q = q.trim();
+  if(!q) return null;
+
+  function tokenize(s){
+    const tokens=[];
+    let i=0;
+    while(i<s.length){
+      if(s[i]==='('){ tokens.push('('); i++; }
+      else if(s[i]===')'){tokens.push(')'); i++; }
+      else if(s.slice(i,i+2)==='&&'){ tokens.push('&&'); i+=2; }
+      else if(s.slice(i,i+2)==='||'){ tokens.push('||'); i+=2; }
+      else if(s[i]===' '){ i++; }
+      else {
+        let j=i;
+        while(j<s.length && !['(',')',' '].includes(s[j]) && s.slice(j,j+2)!=='&&' && s.slice(j,j+2)!=='||') j++;
+        if(j>i) tokens.push(s.slice(i,j).toLowerCase().trim());
+        i=j;
+      }
+    }
+    return tokens.filter(Boolean);
+  }
+
+  function parse(tokens){
+    let pos=0;
+    function parseOr(){
+      let left=parseAnd();
+      while(pos<tokens.length && tokens[pos]==='||'){
+        pos++;
+        const right=parseAnd();
+        const l=left,r=right;
+        left=ings=>(l(ings)||r(ings));
+      }
+      return left;
+    }
+    function parseAnd(){
+      let left=parseAtom();
+      while(pos<tokens.length && tokens[pos]==='&&'){
+        pos++;
+        const right=parseAtom();
+        const l=left,r=right;
+        left=ings=>(l(ings)&&r(ings));
+      }
+      return left;
+    }
+    function parseAtom(){
+      if(pos>=tokens.length) return ()=>false;
+      if(tokens[pos]==='('){
+        pos++;
+        const expr=parseOr();
+        if(tokens[pos]===')') pos++;
+        return expr;
+      }
+      const term=tokens[pos++];
+      return ings=>[...ings].some(name=>name.includes(term));
+    }
+    return parseOr();
+  }
+
+  try{
+    const tokens=tokenize(q);
+    if(!tokens.length) return null;
+    return parse(tokens);
+  }catch(e){ return null; }
+}
+
+function renderXrefFiltered(){
+  const xrefResults=document.getElementById('xref-results');
+  const c=xrefResults||document.getElementById('content');
   if(!S.xrefData){ renderXref(); return; }
-  const q=(S.searchQ||'').toLowerCase().trim();
+
+  // Build recipe->ingredients map for compound search
+  const recipeIngs={};
+  for(const ing of Object.values(S.xrefData)){
+    for(const [recId, recName] of Object.entries(ing.recipes)){
+      if(!recipeIngs[recId]) recipeIngs[recId]={name:recName, ings:new Set()};
+      recipeIngs[recId].ings.add(ing.name.toLowerCase());
+    }
+  }
+
+  const simpleQ=(S.searchQ||'').toLowerCase().trim();
+  const compoundQ=(S.compoundQ||'').trim();
+  const compiledExpr = compoundQ ? parseCompoundQuery(compoundQ) : null;
+
+  // Compound search: filter recipes that satisfy the expression
+  if(compiledExpr){
+    const matchingRecipeIds=new Set(
+      Object.entries(recipeIngs)
+        .filter(([id,{ings}])=>compiledExpr(ings))
+        .map(([id])=>id)
+    );
+    if(!matchingRecipeIds.size){
+      c.innerHTML=`<div style="font-size:12px;color:var(--brown-light);margin-bottom:12px;padding:8px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Compound search active: <strong>${esc(compoundQ)}</strong></div><div class="empty"><h3>No matches</h3><p>No recipes found with that ingredient combination.</p></div>`;
+      return;
+    }
+    const matchedRecipes=Object.entries(recipeIngs).filter(([id])=>matchingRecipeIds.has(id));
+    let html=`<div style="font-size:12px;color:var(--brown-light);margin-bottom:12px;padding:8px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Compound search: <strong>${esc(compoundQ)}</strong> — ${matchedRecipes.length} recipe${matchedRecipes.length===1?'':'s'} found</div>`;
+    html+=`<div class="xref-card"><div class="xref-header">Matching recipes<span class="xref-shared-badge">${matchedRecipes.length}</span></div>`;
+    html+=matchedRecipes.map(([id,{name}])=>`<div class="xref-row"><span class="xref-recipe">${esc(name)}</span></div>`).join('');
+    html+=`</div>`;
+    c.innerHTML=html;
+    return;
+  }
+
+  // Simple search (existing behaviour)
   let sorted=Object.values(S.xrefData).sort((a,b)=>Object.keys(b.recipes).length-Object.keys(a.recipes).length);
-  if(q){
+  if(simpleQ){
     sorted=sorted.filter(x=>
-      x.name.toLowerCase().includes(q) ||
-      Object.values(x.recipes).some(r=>r.toLowerCase().includes(q))
+      x.name.toLowerCase().includes(simpleQ) ||
+      Object.values(x.recipes).some(r=>r.toLowerCase().includes(simpleQ))
     );
   }
   if(!sorted.length){
-    c.innerHTML=q?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No data yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>';
+    c.innerHTML=simpleQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No data yet</h3><p>Add recipes with ingredients to see cross-references.</p></div>';
     return;
   }
   const shared=sorted.filter(x=>Object.keys(x.recipes).length>1);
