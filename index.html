@@ -100,13 +100,13 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .add-link:hover { text-decoration: underline; }
 .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 /* Ingredient builder */
-.ing-build-row { display: grid; grid-template-columns: 1fr 60px 100px 28px; border-bottom: 1px solid var(--border); background: white; }
+.ing-build-row { display: grid; grid-template-columns: 1fr 60px 100px 90px 28px; border-bottom: 1px solid var(--border); background: white; }
 .ing-build-row:last-child { border-bottom: none; }
 .ing-build-row input, .ing-build-row select { border: none; border-right: 1px solid var(--border); border-radius: 0; padding: 7px 8px; font-size: 13px; background: transparent; color: var(--brown); outline: none; width: 100%; font-family: 'DM Sans', sans-serif; }
 .ing-build-row input:focus, .ing-build-row select:focus { background: #fffdf9; }
 .ing-build-row .del-btn { border: none; background: none; cursor: pointer; color: var(--brown-light); font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .ing-build-row .del-btn:hover { color: var(--accent); }
-.ing-build-header { display: grid; grid-template-columns: 1fr 60px 100px 28px; background: var(--cream2); border-bottom: 1px solid var(--border); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.ing-build-header { display: grid; grid-template-columns: 1fr 60px 100px 90px 28px; background: var(--cream2); border-bottom: 1px solid var(--border); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 .ing-build-header span { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--brown-light); padding: 5px 8px; }
 .ing-build-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: visible; margin-bottom: 8px; }
 /* Ingredient search dropdown */
@@ -405,12 +405,13 @@ function renderChecklist(){
   const ingItemsHtml = [
     ...solo.map(i => {
       const idx = ingIdx++;
-      const inner = `<span class="checklist-qty">${scaleAndFormatQty(i.quantity,i.units,S.currentScale)}</span>${esc(i.ingredient_master.name)}`;
+      const inner = `<span class="checklist-qty">${scaleAndFormatQty(i.quantity,i.units,S.currentScale)}</span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`;
+
       return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     }),
     ...Object.values(groups).map(grp => {
       const idx = ingIdx++;
-      const inner = grp.map(i=>`${scaleAndFormatQty(i.quantity,i.units,S.currentScale)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ');
+      const inner = grp.map(i=>`${scaleAndFormatQty(i.quantity,i.units,S.currentScale)} ${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`).join(' <em>or</em> ');
       return checklistItemHtml('ing', idx, checklistState.checkedIngs.has(idx), inner);
     })
   ].join('');
@@ -483,12 +484,12 @@ async function viewDraft(id){
   if(!d) return;
   const [steps,ings,recipeTags]=await Promise.all([
     db.get(`recipe_steps?recipe_id=eq.${id}&order=step_number`),
-    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,ingredient_master(id,name)`),
+    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,prep_note,ingredient_master(id,name)`),
     db.get(`recipe_tags?recipe_id=eq.${id}&select=tag_id`)
   ]);
   FM={
     name:d.name||'', source:d.source||'', serves:d.serves||'', notes:d.notes||'',
-    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
+    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):'',prepNote:i.prep_note||''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
     steps: steps.length ? steps.map(s=>({seq:s.step_number,text:s.instruction})) : [{seq:1,text:''}],
     selectedTags: recipeTags.map(rt=>rt.tag_id),
     showNewIng:false, newIngName:'', newIngTypeId:'',
@@ -630,7 +631,7 @@ async function renderDetail(){
   try{
     const [steps,ings,recipeTags]=await Promise.all([
       db.get(`recipe_steps?recipe_id=eq.${r.id}&order=step_number`),
-      db.get(`recipe_ingredients?recipe_id=eq.${r.id}&select=id,quantity,or_group,units(abbreviation,system,type,base_multiplier),ingredient_master(id,name)`),
+      db.get(`recipe_ingredients?recipe_id=eq.${r.id}&select=id,quantity,or_group,prep_note,units(abbreviation,system,type,base_multiplier),ingredient_master(id,name)`),
       db.get(`recipe_tags?recipe_id=eq.${r.id}&select=tag_id`)
     ]);
     S.currentDetailData = { steps, ings, recipeTags };
@@ -648,8 +649,8 @@ function renderDetailIngredientsAndRest(r){
   const groups={};
   for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
   const ingHtml=[
-    ...solo.map(i=>`<div class="ing-row"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}</span></div>`),
-    ...Object.values(groups).map(grp=>`<div class="ing-row" style="flex-direction:column;gap:3px;padding:8px 0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:2px">Choose one:</div>${grp.map(i=>`<div style="display:flex;gap:10px;font-size:14px"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}</span><span class="or-badge">or</span></div>`).join('')}</div>`)
+    ...solo.map(i=>`<div class="ing-row"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}</span></div>`),
+    ...Object.values(groups).map(grp=>`<div class="ing-row" style="flex-direction:column;gap:3px;padding:8px 0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin-bottom:2px">Choose one:</div>${grp.map(i=>`<div style="display:flex;gap:10px;font-size:14px"><span class="ing-qty">${scaleAndFormatQty(i.quantity,i.units,scale)}</span><span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}</span><span class="or-badge">or</span></div>`).join('')}</div>`)
   ].join('');
   const stepsHtml=steps.length?steps.map(s=>`<div class="step-row"><div class="step-num">${s.step_number}</div><div>${esc(s.instruction)}</div></div>`).join(''):'<div style="font-size:13px;color:var(--brown-light)">No steps added.</div>';
   const sourceHtml=r.source?(r.source.startsWith('http')?`<a href="${esc(r.source)}" target="_blank" style="color:var(--accent);font-size:14px;word-break:break-all">${esc(r.source)}</a>`:`<span style="font-size:14px">${esc(r.source)}</span>`):'<span style="font-size:13px;color:var(--brown-light)">—</span>';
@@ -710,18 +711,18 @@ async function saveNewIngredient(name, typeId){
 // ---- Recipe Modal (Add/Edit) — stable form state ----
 let FM = {}; // form model, stable across re-renders
 
-function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],steps:[{seq:1,text:''}],selectedTags:[],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
+function openAddRecipe(){ FM={name:'',source:'',serves:'',notes:'',ings:[{ingId:'',ingName:'',qty:'',unitId:'',orGroup:'',prepNote:''}],steps:[{seq:1,text:''}],selectedTags:[],showNewIng:false,newIngName:'',newIngTypeId:''}; openRecipeModal(null); }
 
 async function openEditRecipe(id){
   const r=S.recipes.find(x=>x.id===id);
   const [steps,ings,recipeTags]=await Promise.all([
     db.get(`recipe_steps?recipe_id=eq.${id}&order=step_number`),
-    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,ingredient_master(id,name)`),
+    db.get(`recipe_ingredients?recipe_id=eq.${id}&select=id,quantity,or_group,unit_id,prep_note,ingredient_master(id,name)`),
     db.get(`recipe_tags?recipe_id=eq.${id}&select=tag_id`)
   ]);
   FM={
     name:r.name||'', source:r.source||'', serves:r.serves||'', notes:r.notes||'',
-    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
+    ings: ings.length ? ings.map(i=>({ingId:i.ingredient_master.id,ingName:i.ingredient_master.name,qty:i.quantity!=null?String(i.quantity):'',unitId:i.unit_id||'',orGroup:i.or_group!=null?String(i.or_group):'',prepNote:i.prep_note||''})) : [{ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}],
     steps: steps.length ? steps.map(s=>({seq:s.step_number,text:s.instruction})) : [{seq:1,text:''}],
     selectedTags: recipeTags.map(rt=>rt.tag_id),
     showNewIng:false, newIngName:'', newIngTypeId:''
@@ -773,7 +774,7 @@ function renderRecipeModal(editId){
 
       <div class="section-label">Ingredients</div>
       <div class="ing-build-wrap">
-        <div class="ing-build-header"><span>Ingredient</span><span>Qty</span><span>Unit</span><span></span></div>
+        <div class="ing-build-header"><span>Ingredient</span><span>Qty</span><span>Unit</span><span>Prep</span><span></span></div>
         <div id="ing-list">${FM.ings.map((ing,i)=>ingRowHtml(ing,i)).join('')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
@@ -825,6 +826,7 @@ function ingRowHtml(ing,i){
     </div>
     <input type="text" inputmode="decimal" placeholder="e.g. 1/2" value="${esc(ing.qty)}" id="iq-${i}" style="border-right:1px solid var(--border)">
     <select id="iu-${i}" style="border-right:1px solid var(--border)">${buildUnitOpts(ing.unitId)}</select>
+    <input type="text" placeholder="e.g. diced" value="${esc(ing.prepNote||'')}" id="ip-${i}" style="border-right:1px solid var(--border);color:var(--brown-light);font-style:italic">
     <button class="del-btn" onclick="removeIngRow(${i})">&#10005;</button>
   </div>`;
 }
@@ -868,9 +870,11 @@ function attachIngDropdowns(){
     const drop=document.getElementById(`id-${i}`);
     const qtyInput=document.getElementById(`iq-${i}`);
     const unitSel=document.getElementById(`iu-${i}`);
+    const prepInput=document.getElementById(`ip-${i}`);
     if(!input||!drop)return;
     if(qtyInput) qtyInput.addEventListener('input',()=>{ FM.ings[i].qty=qtyInput.value; });
     if(unitSel) unitSel.addEventListener('change',()=>{ FM.ings[i].unitId=unitSel.value; });
+    if(prepInput) prepInput.addEventListener('input',()=>{ FM.ings[i].prepNote=prepInput.value; });
     input.addEventListener('focus',()=>buildIngDrop(i,input.value));
     input.addEventListener('input',()=>{ FM.ings[i].ingName=input.value; FM.ings[i].ingId=''; buildIngDrop(i,input.value); });
     input.addEventListener('blur',()=>setTimeout(()=>{ drop.style.display='none'; },300));
@@ -929,7 +933,7 @@ async function quickCreateIng(i){
   }catch(e){ toast('Error — may already exist'); }
 }
 
-function addIngRow(){ FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
+function addIngRow(){ FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:'',prepNote:''}); rerenderIngList(); }
 function removeIngRow(i){ FM.ings.splice(i,1); if(!FM.ings.length)FM.ings.push({ingId:'',ingName:'',qty:'',unitId:'',orGroup:''}); rerenderIngList(); }
 function addStepRow(){ const nextSeq=FM.steps.length?Math.max(...FM.steps.map(s=>s.seq))+1:1; FM.steps.push({seq:nextSeq,text:''}); rerenderStepList(); }
 function removeStepRow(i){ FM.steps.splice(i,1); if(!FM.steps.length)FM.steps.push({seq:1,text:''}); rerenderStepList(); }
@@ -1007,7 +1011,7 @@ async function saveRecipe(editId){
       toast(`⚠ ${unlinked.length} ingredient(s) not linked — search and select from list`);
       return;
     }
-    const validIngs=FM.ings.filter(i=>i.ingId).map(i=>({recipe_id:recipeId,ingredient_id:i.ingId,quantity:parseFraction(i.qty),unit_id:i.unitId||null,or_group:i.orGroup!==''?Number(i.orGroup):null}));
+    const validIngs=FM.ings.filter(i=>i.ingId).map(i=>({recipe_id:recipeId,ingredient_id:i.ingId,quantity:parseFraction(i.qty),unit_id:i.unitId||null,or_group:i.orGroup!==''?Number(i.orGroup):null,prep_note:i.prepNote||null}));
     if(validIngs.length) await db.post('recipe_ingredients',validIngs);
     // save tags
     if(editId) await db.del(`recipe_tags?recipe_id=eq.${editId}`);
