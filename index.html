@@ -969,10 +969,20 @@ async function renderMealDetail(){
 // ---- Meal Checklist ----
 let mealChecklistState = {};
 
-function openMealChecklist(){
+async function openMealChecklist(){
   mealChecklistState = { checked: new Set() };
   document.getElementById('app').style.display='none';
   acquireWakeLock();
+  const tasks=S.currentMealTasks||[];
+  const recipeIds=[...new Set(tasks.filter(t=>t.meal_task_types?.name==='recipe'&&t.recipe_id).map(t=>t.recipe_id))];
+  S.mealChecklistExpanded={};
+  await Promise.all(recipeIds.map(async rid=>{
+    const [steps,ings]=await Promise.all([
+      db.get(`recipe_steps?recipe_id=eq.${rid}&order=step_number`),
+      db.get(`recipe_ingredients?recipe_id=eq.${rid}&select=id,quantity,or_group,prep_note,units(abbreviation),ingredient_master(id,name)`)
+    ]);
+    S.mealChecklistExpanded[rid]={steps,ings};
+  }));
   renderMealChecklist();
 }
 
@@ -984,41 +994,50 @@ function closeMealChecklist(){
 function renderMealChecklist(){
   const m=S.viewingMeal;
   const tasks=S.currentMealTasks||[];
-  const totalItems=tasks.length;
-  const checkedCount=mealChecklistState.checked.size;
-
-  const itemsHtml=tasks.map((t,idx)=>{
+  const items=[];
+  tasks.forEach(t=>{
     const type=t.meal_task_types?.name||'task';
-    let label='';
-    if(type==='recipe') label=`<strong>${esc(t.recipes?.name||'Recipe')}</strong>${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">— ${esc(t.task_note)}</span>`:''}`;
-    else if(type==='ingredient'){ const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||''; label=`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">— ${esc(t.task_note)}</span>`:''}`; }
-    else label=esc(t.task_note||'Task');
-    const checked=mealChecklistState.checked.has(idx);
-    const optional=t.is_optional?'<span style="font-size:11px;color:var(--brown-light);margin-left:6px">(optional)</span>':'';
-    return `<div class="checklist-item${checked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx})">
-      <div class="checklist-checkbox">${checked?'✓':''}</div>
-      <div class="checklist-text">${label}${optional}</div>
-    </div>`;
+    if(type==='recipe'&&t.recipe_id&&S.mealChecklistExpanded?.[t.recipe_id]){
+      const{steps,ings}=S.mealChecklistExpanded[t.recipe_id];
+      const solo=ings.filter(i=>i.or_group==null);
+      const groups={};
+      for(const i of ings.filter(x=>x.or_group!=null)){ if(!groups[i.or_group])groups[i.or_group]=[]; groups[i.or_group].push(i); }
+      items.push({checkable:false,header:true,label:`<strong>${esc(t.recipes?.name||'Recipe')}</strong>${t.task_note?` \u2014 <em style="font-size:12px;color:var(--brown-light)">${esc(t.task_note)}</em>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
+      if(ings.length) items.push({checkable:false,subheader:true,label:'Ingredients'});
+      solo.forEach(i=>items.push({checkable:true,label:`<span class="checklist-qty">${fmtQty(i.quantity,i.units)}</span>${esc(i.ingredient_master.name)}${i.prep_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">${esc(i.prep_note)}</span>`:''}`}));
+      Object.values(groups).forEach(grp=>items.push({checkable:true,label:grp.map(i=>`${fmtQty(i.quantity,i.units)} ${esc(i.ingredient_master.name)}`).join(' <em>or</em> ')}));
+      if(steps.length) items.push({checkable:false,subheader:true,label:'Program'});
+      steps.forEach(s=>items.push({checkable:true,label:`<strong>${s.step_number}.</strong> ${esc(s.instruction)}`}));
+    } else if(type==='ingredient'){
+      const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||'';
+      items.push({checkable:true,label:`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">\u2014 ${esc(t.task_note)}</span>`:''}${t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':''}`});
+    } else {
+      items.push({checkable:true,label:esc(t.task_note||'Task')+(t.is_optional?' <span style="font-size:11px;color:var(--brown-light)">(optional)</span>':'')});
+    }
+  });
+  S.mealChecklistItems=items;
+  const total=items.filter(i=>i.checkable).length;
+  const checkedCt=mealChecklistState.checked.size;
+  let ci=0;
+  const itemsHtml=items.map(item=>{
+    if(!item.checkable){
+      if(item.header) return `<div style="font-size:15px;font-weight:600;border-top:1px solid var(--border);padding:12px 0 4px;margin-top:4px">${item.label}</div>`;
+      return `<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--brown-light);margin:10px 0 4px">${item.label}</div>`;
+    }
+    const idx=ci++;
+    const isChecked=mealChecklistState.checked.has(idx);
+    return `<div class="checklist-item${isChecked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx},${total})"><div class="checklist-checkbox">${isChecked?'&#10003;':''}</div><div class="checklist-text">${item.label}</div></div>`;
   }).join('');
-
-  document.getElementById('checklist-root').innerHTML=`
-    <div class="checklist-overlay">
-      <div class="checklist-header">
-        <button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button>
-        <h2>${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':''}</h2>
-      </div>
-      <div class="checklist-body">${itemsHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks in this meal.</div>'}</div>
-      <div class="checklist-progress" id="meal-checklist-progress">${checkedCount} of ${totalItems} complete</div>
-    </div>`;
+  document.getElementById('checklist-root').innerHTML=`<div class="checklist-overlay"><div class="checklist-header"><button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button><h2 id="checklist-title">${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">&#128065;</span>':''}</h2></div><div class="checklist-body">${itemsHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks.</div>'}</div><div class="checklist-progress" id="meal-checklist-progress">${checkedCt} of ${total} complete</div></div>`;
 }
 
-function toggleMealChecklistItem(idx){
+function toggleMealChecklistItem(idx,total){
   const nowChecked=!mealChecklistState.checked.has(idx);
   if(nowChecked) mealChecklistState.checked.add(idx); else mealChecklistState.checked.delete(idx);
   const el=document.querySelector(`.checklist-item[data-ctype="meal"][data-cidx="${idx}"]`);
-  if(el){ el.classList.toggle('checked',nowChecked); el.querySelector('.checklist-checkbox').textContent=nowChecked?'✓':''; }
+  if(el){ el.classList.toggle('checked',nowChecked); el.querySelector('.checklist-checkbox').textContent=nowChecked?'&#10003;':''; }
   const prog=document.getElementById('meal-checklist-progress');
-  if(prog) prog.textContent=`${mealChecklistState.checked.size} of ${(S.currentMealTasks||[]).length} complete`;
+  if(prog) prog.textContent=`${mealChecklistState.checked.size} of ${total} complete`;
 }
 
 // ---- Meal form state ----
@@ -1116,8 +1135,8 @@ function buildMealIngDrop(i, val){
   if(!drop)return;
   const q=val.toLowerCase().trim();
   const filtered=q?S.ingredients.filter(x=>x.name.toLowerCase().includes(q)):S.ingredients.slice(0,8);
-  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectMealIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}'')">${esc(x.name)}</div>`).join('');
-  drop.style.display='block';
+  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectMealIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}')">${esc(x.name)}</div>`).join('');
+  drop.style.display=filtered.length?'block':'none';
 }
 
 function selectMealIng(i,id,name){
