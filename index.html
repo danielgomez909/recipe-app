@@ -192,6 +192,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="nav-btn" onclick="switchTab('tags')">Tags</button>
     <button class="nav-btn" onclick="switchTab('drafts')">Draft Recipes</button>
     <button class="nav-btn" onclick="switchTab('sidebars')">Sidebars</button>
+    <button class="nav-btn" onclick="switchTab('meals')">Meals</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
     <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
@@ -260,20 +261,23 @@ function scaleAndFormatQty(qty, unit, scale){
 }
 
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, recipes:[], drafts:[], draftCount:0, sidebars:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
+const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, viewingMeal:null, recipes:[], drafts:[], draftCount:0, sidebars:[], meals:[], mealTaskTypes:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
 
 async function init(){
-  const [units,types,ings,recipes,tags,drafts,sidebars] = await Promise.all([
+  const [units,types,ings,recipes,tags,drafts,sidebars,meals,mealTaskTypes] = await Promise.all([
     db.get('units?order=type,system,name'),
     db.get('ingredient_types?order=name'),
     db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)'),
     db.get('recipes?is_draft=eq.false&order=name&select=id,name,source,notes,serves,prep_time,cook_time,total_time,video_url,created_at'),
     db.get('tags?order=name'),
     db.get('recipes?is_draft=eq.true&order=name&select=id,name,source,serves,notes,prep_time,cook_time,total_time,video_url,raw_import_text,import_source_url'),
-    db.get('sidebars?order=title&select=id,title,body,created_at')
+    db.get('sidebars?order=title&select=id,title,body,created_at'),
+    db.get('meals?order=name&select=id,name,notes,last_made_date,created_at'),
+    db.get('meal_task_types?order=id')
   ]);
   S.units=units; S.types=types; S.ingredients=ings; S.recipes=recipes; S.tags=tags;
   S.drafts=drafts; S.draftCount=drafts.length; S.sidebars=sidebars;
+  S.meals=meals; S.mealTaskTypes=mealTaskTypes;
   render();
 }
 
@@ -294,6 +298,12 @@ function render(){
     nav.style.display='none'; searchBar.style.display='none';
     setTitle(S.viewingSidebar.title);
     renderSidebarDetail(); return;
+  }
+  if(S.viewingMeal){
+    backBtn.style.display=''; addBtn.style.display='none';
+    nav.style.display='none'; searchBar.style.display='none';
+    setTitle(S.viewingMeal.name);
+    renderMealDetail(); return;
   }
   backBtn.style.display='none'; nav.style.display='';
   setTitle('Decent Eats');
@@ -332,6 +342,13 @@ function render(){
     document.getElementById('search-input').placeholder='Search sidebars...';
     document.getElementById('sub-nav').style.display='none';
     renderSidebarList();
+  } else if(S.tab==='meals'){
+    addBtn.style.display=''; addBtn.textContent='+ Meal';
+    addBtn.onclick=openAddMeal;
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search meals...';
+    document.getElementById('sub-nav').style.display='none';
+    renderMealList();
   } else if(S.tab==='tags'){
     document.getElementById('sub-nav').style.display='';
     searchBar.style.display='none';
@@ -348,9 +365,9 @@ function render(){
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
-  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
+  S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.viewingMeal=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)||(tab==='meals'&&i===6)));
   render();
 }
 
@@ -389,6 +406,7 @@ document.addEventListener('visibilitychange', async()=>{
 function goBack(){
   releaseWakeLock();
   if(S.viewingSidebar){ S.viewingSidebar=null; S.tab='sidebars'; render(); return; }
+  if(S.viewingMeal){ S.viewingMeal=null; S.tab='meals'; render(); return; }
   S.viewingRecipe=null; S.tab='recipes'; render();
 }
 
@@ -890,6 +908,325 @@ async function viewRecipeFromXref(id){
   S.currentScale=1;
   await acquireWakeLock();
   render();
+}
+
+// ---- Meals ----
+function renderMealList(){
+  const c=document.getElementById('content');
+  let list=S.meals;
+  if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(m=>m.name.toLowerCase().includes(q)); }
+  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No meals yet</h3><p>Create your first meal plan.</p></div>'; return; }
+  c.innerHTML=list.map(m=>`<div class="recipe-card" onclick="viewMeal('${m.id}')">
+    <h3>${esc(m.name)}</h3>
+    <div class="meta">${m.last_made_date?'Last made: '+new Date(m.last_made_date).toLocaleDateString():''}</div>
+  </div>`).join('');
+}
+
+async function viewMeal(id){
+  S.viewingMeal=S.meals.find(m=>m.id===id);
+  render();
+}
+
+async function renderMealDetail(){
+  const c=document.getElementById('content');
+  const m=S.viewingMeal;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
+  try{
+    const [tasks, mealTagRows] = await Promise.all([
+      db.get(`meal_tasks?meal_id=eq.${m.id}&order=sort_order,id&select=id,task_type_id,recipe_id,ingredient_id,quantity,unit_id,task_note,sort_order,is_optional,recipes(id,name),ingredient_master(id,name),units(abbreviation),meal_task_types(name)`),
+      db.get(`meal_tags?meal_id=eq.${m.id}&select=tag_id`)
+    ]);
+    S.currentMealTasks = tasks;
+    const tagNames=mealTagRows.map(mt=>S.tags.find(t=>t.id===mt.tag_id)).filter(Boolean);
+    const tagsHtml=tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
+
+    const tasksHtml = tasks.length ? tasks.map(t=>{
+      const type = t.meal_task_types?.name || 'task';
+      let label='', detail='';
+      if(type==='recipe'){ label=t.recipes?.name||'Unknown recipe'; detail=t.task_note?`<span style="font-size:12px;color:var(--brown-light);font-style:italic"> — ${esc(t.task_note)}</span>`:''; }
+      else if(type==='ingredient'){ const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||''; label=`${[qty,unit,t.ingredient_master?.name].filter(Boolean).join(' ')}`; detail=t.task_note?`<span style="font-size:12px;color:var(--brown-light);font-style:italic"> — ${esc(t.task_note)}</span>`:''; }
+      else { label=t.task_note||'Task'; detail=''; }
+      return `<div class="ing-row">
+        <span style="font-size:11px;background:var(--cream2);color:var(--brown-light);padding:2px 6px;border-radius:4px;flex-shrink:0;margin-right:4px">${esc(type)}</span>
+        <span>${esc(label)}${detail}${t.is_optional?'<span style="font-size:11px;color:var(--brown-light);margin-left:6px">(optional)</span>':''}</span>
+        ${t.sort_order!=null?`<span style="font-size:11px;color:var(--border-strong);margin-left:auto">#${t.sort_order}</span>`:''}
+      </div>`;
+    }).join('') : '<div style="font-size:13px;color:var(--brown-light)">No tasks yet.</div>';
+
+    c.innerHTML=`
+      <div class="detail-actions">
+        <button class="btn btn-sm btn-primary" onclick="openMealChecklist()">▶ Cook this meal</button>
+        <button class="btn btn-sm" onclick="openEditMeal('${m.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDeleteMeal('${m.id}')">Delete</button>
+      </div>
+      ${m.last_made_date?`<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px">Last made: ${new Date(m.last_made_date).toLocaleDateString()}</div>`:''}
+      ${tagNames.length?`<div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>`:''}
+      ${m.notes?`<div class="detail-section"><div class="detail-section-header"><h4>Notes</h4></div><div class="detail-section-body" style="line-height:1.7;font-size:15px">${renderMarkdown(m.notes)}</div></div>`:''}
+      <div class="detail-section"><div class="detail-section-header"><h4>Tasks</h4></div><div class="detail-section-body" style="padding:0 16px">${tasksHtml}</div></div>`;
+  }catch(e){ c.innerHTML=`<p>Error loading meal: ${esc(e.message)}</p>`; }
+}
+
+// ---- Meal Checklist ----
+let mealChecklistState = {};
+
+function openMealChecklist(){
+  mealChecklistState = { checked: new Set() };
+  document.getElementById('app').style.display='none';
+  acquireWakeLock();
+  renderMealChecklist();
+}
+
+function closeMealChecklist(){
+  document.getElementById('checklist-root').innerHTML='';
+  document.getElementById('app').style.display='';
+}
+
+function renderMealChecklist(){
+  const m=S.viewingMeal;
+  const tasks=S.currentMealTasks||[];
+  const totalItems=tasks.length;
+  const checkedCount=mealChecklistState.checked.size;
+
+  const itemsHtml=tasks.map((t,idx)=>{
+    const type=t.meal_task_types?.name||'task';
+    let label='';
+    if(type==='recipe') label=`<strong>${esc(t.recipes?.name||'Recipe')}</strong>${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">— ${esc(t.task_note)}</span>`:''}`;
+    else if(type==='ingredient'){ const qty=t.quantity!=null?toFraction(t.quantity):''; const unit=t.units?.abbreviation||''; label=`<span class="checklist-qty">${[qty,unit].filter(Boolean).join(' ')}</span>${esc(t.ingredient_master?.name||'')}${t.task_note?` <span style="font-size:12px;color:var(--brown-light);font-style:italic">— ${esc(t.task_note)}</span>`:''}`; }
+    else label=esc(t.task_note||'Task');
+    const checked=mealChecklistState.checked.has(idx);
+    const optional=t.is_optional?'<span style="font-size:11px;color:var(--brown-light);margin-left:6px">(optional)</span>':'';
+    return `<div class="checklist-item${checked?' checked':''}" data-ctype="meal" data-cidx="${idx}" onclick="toggleMealChecklistItem(${idx})">
+      <div class="checklist-checkbox">${checked?'✓':''}</div>
+      <div class="checklist-text">${label}${optional}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('checklist-root').innerHTML=`
+    <div class="checklist-overlay">
+      <div class="checklist-header">
+        <button class="topbar-back" onclick="closeMealChecklist()" aria-label="Close">&#8592;</button>
+        <h2>${esc(m.name)}${wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':''}</h2>
+      </div>
+      <div class="checklist-body">${itemsHtml||'<div style="font-size:13px;color:var(--brown-light)">No tasks in this meal.</div>'}</div>
+      <div class="checklist-progress" id="meal-checklist-progress">${checkedCount} of ${totalItems} complete</div>
+    </div>`;
+}
+
+function toggleMealChecklistItem(idx){
+  const nowChecked=!mealChecklistState.checked.has(idx);
+  if(nowChecked) mealChecklistState.checked.add(idx); else mealChecklistState.checked.delete(idx);
+  const el=document.querySelector(`.checklist-item[data-ctype="meal"][data-cidx="${idx}"]`);
+  if(el){ el.classList.toggle('checked',nowChecked); el.querySelector('.checklist-checkbox').textContent=nowChecked?'✓':''; }
+  const prog=document.getElementById('meal-checklist-progress');
+  if(prog) prog.textContent=`${mealChecklistState.checked.size} of ${(S.currentMealTasks||[]).length} complete`;
+}
+
+// ---- Meal form state ----
+let MF = {}; // meal form model
+
+function openAddMeal(){
+  MF={name:'',notes:'',lastMadeDate:'',tasks:[],selectedTags:[]};
+  openMealModal(null);
+}
+
+async function openEditMeal(id){
+  const m=S.meals.find(x=>x.id===id);
+  const [tasks,mealTagRows]=await Promise.all([
+    db.get(`meal_tasks?meal_id=eq.${id}&order=sort_order,id&select=id,task_type_id,recipe_id,ingredient_id,quantity,unit_id,task_note,sort_order,is_optional,recipes(id,name),ingredient_master(id,name),units(abbreviation)`),
+    db.get(`meal_tags?meal_id=eq.${id}&select=tag_id`)
+  ]);
+  MF={
+    name:m.name||'', notes:m.notes||'', lastMadeDate:m.last_made_date||'',
+    selectedTags:mealTagRows.map(mt=>mt.tag_id),
+    tasks:tasks.map(t=>({
+      id:t.id, taskTypeId:String(t.task_type_id),
+      recipeId:t.recipe_id||'', recipeName:t.recipes?.name||'',
+      ingredientId:t.ingredient_id||'', ingredientName:t.ingredient_master?.name||'',
+      quantity:t.quantity!=null?String(t.quantity):'', unitId:t.unit_id||'',
+      taskNote:t.task_note||'', sortOrder:t.sort_order!=null?String(t.sort_order):'',
+      isOptional:t.is_optional||false
+    }))
+  };
+  openMealModal(id);
+}
+
+function mealTaskRowHtml(task, i){
+  const typeId=parseInt(task.taskTypeId)||1;
+  const typeName=S.mealTaskTypes.find(t=>t.id===typeId)?.name||'task';
+  const typeSelect=S.mealTaskTypes.map(t=>`<option value="${t.id}"${t.id===typeId?' selected':''}>${t.name}</option>`).join('');
+  const recipeSelect=S.recipes.map(r=>`<option value="${r.id}"${r.id===task.recipeId?' selected':''}>${esc(r.name)}</option>`).join('');
+  const ingSection=typeName==='ingredient'?`
+    <div style="display:grid;grid-template-columns:1fr 60px 100px;gap:6px;margin-top:6px">
+      <div class="ing-search-wrap" style="position:relative">
+        <input id="mt-ing-${i}" class="ing-search-input" placeholder="ingredient..." value="${esc(task.ingredientName)}" autocomplete="off" style="width:100%;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none" oninput="MF.tasks[${i}].ingredientName=this.value;MF.tasks[${i}].ingredientId=''">
+        <div class="ing-dropdown" id="mt-id-${i}" style="display:none"></div>
+      </div>
+      <input type="text" placeholder="qty" value="${esc(task.quantity)}" id="mt-qty-${i}" style="padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none">
+      <select id="mt-unit-${i}" style="padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">${buildUnitOpts(task.unitId)}</select>
+    </div>`:
+    typeName==='recipe'?`<select id="mt-rec-${i}" style="width:100%;margin-top:6px;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none"><option value="">— select recipe —</option>${recipeSelect}</select>`:'';
+
+  return `<div class="meal-task-row" id="mt-${i}" style="background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:80px 60px 60px 1fr 24px;gap:6px;align-items:center">
+      <select id="mt-type-${i}" style="padding:5px 6px;font-size:12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none" onchange="changeMealTaskType(${i},this.value)">${typeSelect}</select>
+      <label style="font-size:11px;color:var(--brown-light);display:flex;align-items:center;gap:3px"><input type="checkbox" id="mt-opt-${i}" ${task.isOptional?'checked':''} onchange="MF.tasks[${i}].isOptional=this.checked"> opt</label>
+      <input type="number" min="1" placeholder="#" value="${esc(task.sortOrder)}" id="mt-sort-${i}" title="Sort order" style="padding:5px 6px;font-size:12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--accent);outline:none;text-align:center">
+      <input type="text" placeholder="note / task text" value="${esc(task.taskNote)}" id="mt-note-${i}" style="padding:5px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none">
+      <button onclick="removeMealTask(${i})" style="background:none;border:none;cursor:pointer;color:var(--brown-light);font-size:14px">✕</button>
+    </div>
+    ${ingSection}
+  </div>`;
+}
+
+function changeMealTaskType(i, val){
+  MF.tasks[i].taskTypeId=val;
+  syncMFFromDOM();
+  rerenderMealTasks();
+}
+
+function rerenderMealTasks(){
+  const el=document.getElementById('meal-task-list');
+  if(el){ el.innerHTML=MF.tasks.map((t,i)=>mealTaskRowHtml(t,i)).join(''); attachMealTaskListeners(); }
+}
+
+function attachMealTaskListeners(){
+  MF.tasks.forEach((_,i)=>{
+    const noteEl=document.getElementById(`mt-note-${i}`);
+    const sortEl=document.getElementById(`mt-sort-${i}`);
+    const qtyEl=document.getElementById(`mt-qty-${i}`);
+    const unitEl=document.getElementById(`mt-unit-${i}`);
+    const recEl=document.getElementById(`mt-rec-${i}`);
+    const ingEl=document.getElementById(`mt-ing-${i}`);
+    const ingDrop=document.getElementById(`mt-id-${i}`);
+    if(noteEl) noteEl.addEventListener('input',()=>MF.tasks[i].taskNote=noteEl.value);
+    if(sortEl) sortEl.addEventListener('input',()=>MF.tasks[i].sortOrder=sortEl.value);
+    if(qtyEl) qtyEl.addEventListener('input',()=>MF.tasks[i].quantity=qtyEl.value);
+    if(unitEl) unitEl.addEventListener('change',()=>MF.tasks[i].unitId=unitEl.value);
+    if(recEl) recEl.addEventListener('change',()=>MF.tasks[i].recipeId=recEl.value);
+    if(ingEl&&ingDrop){
+      ingEl.addEventListener('focus',()=>buildMealIngDrop(i,ingEl.value));
+      ingEl.addEventListener('input',()=>{ MF.tasks[i].ingredientName=ingEl.value; MF.tasks[i].ingredientId=''; buildMealIngDrop(i,ingEl.value); });
+      ingEl.addEventListener('blur',()=>setTimeout(()=>{ ingDrop.style.display='none'; },300));
+    }
+  });
+}
+
+function buildMealIngDrop(i, val){
+  const drop=document.getElementById(`mt-id-${i}`);
+  if(!drop)return;
+  const q=val.toLowerCase().trim();
+  const filtered=q?S.ingredients.filter(x=>x.name.toLowerCase().includes(q)):S.ingredients.slice(0,8);
+  drop.innerHTML=filtered.map(x=>`<div class="ing-dropdown-item" onmousedown="event.preventDefault();selectMealIng(${i},'${x.id}','${x.name.replace(/'/g,"\\'")}'')">${esc(x.name)}</div>`).join('');
+  drop.style.display='block';
+}
+
+function selectMealIng(i,id,name){
+  MF.tasks[i].ingredientId=id; MF.tasks[i].ingredientName=name;
+  const inp=document.getElementById(`mt-ing-${i}`);
+  const drop=document.getElementById(`mt-id-${i}`);
+  if(inp) inp.value=name;
+  if(drop) drop.style.display='none';
+}
+
+function addMealTask(){
+  MF.tasks.push({taskTypeId:'3',recipeId:'',recipeName:'',ingredientId:'',ingredientName:'',quantity:'',unitId:'',taskNote:'',sortOrder:'',isOptional:false});
+  rerenderMealTasks();
+}
+
+function removeMealTask(i){
+  syncMFFromDOM();
+  MF.tasks.splice(i,1);
+  rerenderMealTasks();
+}
+
+function syncMFFromDOM(){
+  const n=document.getElementById('mf-name'); if(n)MF.name=n.value;
+  const nd=document.getElementById('mf-notes'); if(nd)MF.notes=nd.value;
+  const ld=document.getElementById('mf-last-made'); if(ld)MF.lastMadeDate=ld.value;
+  MF.tasks.forEach((_,i)=>{
+    const noteEl=document.getElementById(`mt-note-${i}`); if(noteEl)MF.tasks[i].taskNote=noteEl.value;
+    const sortEl=document.getElementById(`mt-sort-${i}`); if(sortEl)MF.tasks[i].sortOrder=sortEl.value;
+    const qtyEl=document.getElementById(`mt-qty-${i}`); if(qtyEl)MF.tasks[i].quantity=qtyEl.value;
+    const unitEl=document.getElementById(`mt-unit-${i}`); if(unitEl)MF.tasks[i].unitId=unitEl.value;
+    const recEl=document.getElementById(`mt-rec-${i}`); if(recEl)MF.tasks[i].recipeId=recEl.value;
+    const ingEl=document.getElementById(`mt-ing-${i}`); if(ingEl)MF.tasks[i].ingredientName=ingEl.value;
+    const typeEl=document.getElementById(`mt-type-${i}`); if(typeEl)MF.tasks[i].taskTypeId=typeEl.value;
+    const optEl=document.getElementById(`mt-opt-${i}`); if(optEl)MF.tasks[i].isOptional=optEl.checked;
+  });
+}
+
+function openMealModal(editId){
+  const isEdit=!!editId;
+  const tagChips=S.tags.map(t=>`<span class="tag-chip${MF.selectedTags.includes(t.id)?' active':''}" onclick="toggleMealTag(${t.id},this)">${esc(t.name)}</span>`).join('');
+  openModal(`
+    <div class="modal-header"><div class="modal-title">${isEdit?'Edit meal':'New meal'}</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Meal name</label><input id="mf-name" value="${esc(MF.name)}" placeholder="e.g. Taco Night" oninput="MF.name=this.value"></div>
+      <div class="row2">
+        <div class="field"><label>Last made</label><input type="date" id="mf-last-made" value="${esc(MF.lastMadeDate)}" oninput="MF.lastMadeDate=this.value"></div>
+        <div class="field"></div>
+      </div>
+      ${S.tags.length?`<div class="field"><label>Tags</label><div style="display:flex;flex-wrap:wrap;gap:6px">${tagChips}</div></div>`:''}
+      <div class="field"><label>Notes <span style="font-weight:400;text-transform:none;letter-spacing:0">(Markdown)</span></label>
+        <textarea id="mf-notes" style="min-height:80px;font-family:'DM Mono',monospace;font-size:13px" oninput="MF.notes=this.value">${esc(MF.notes)}</textarea>
+      </div>
+      <div class="section-label">Tasks</div>
+      <div style="font-size:11px;color:var(--brown-light);margin-bottom:8px">Type · Opt · Sort# · Note/task text</div>
+      <div id="meal-task-list">${MF.tasks.map((t,i)=>mealTaskRowHtml(t,i)).join('')}</div>
+      <button class="add-link" onclick="syncMFFromDOM();addMealTask()">+ add task</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMeal('${editId||''}')">${isEdit?'Save changes':'Save meal'}</button>
+    </div>`);
+  attachMealTaskListeners();
+}
+
+function toggleMealTag(tagId, el){
+  const idx=MF.selectedTags.indexOf(tagId);
+  if(idx===-1){ MF.selectedTags.push(tagId); el.classList.add('active'); }
+  else { MF.selectedTags.splice(idx,1); el.classList.remove('active'); }
+}
+
+async function saveMeal(editId){
+  syncMFFromDOM();
+  if(!MF.name.trim()){ toast('Meal name required'); return; }
+  try{
+    let mealId=editId;
+    const payload={name:MF.name.trim(),notes:MF.notes.trim()||null,last_made_date:MF.lastMadeDate||null};
+    if(editId){ await db.patch(`meals?id=eq.${editId}`,payload); }
+    else { const[created]=await db.post('meals',payload); mealId=created.id; }
+    // tags
+    if(editId) await db.del(`meal_tags?meal_id=eq.${editId}`);
+    if(MF.selectedTags.length) await db.post('meal_tags',MF.selectedTags.map(tid=>({meal_id:mealId,tag_id:tid})));
+    // tasks
+    if(editId) await db.del(`meal_tasks?meal_id=eq.${editId}`);
+    const validTasks=MF.tasks.map(t=>({
+      meal_id:mealId,
+      task_type_id:parseInt(t.taskTypeId)||3,
+      recipe_id:t.recipeId||null,
+      ingredient_id:t.ingredientId||null,
+      quantity:t.quantity?parseFraction(t.quantity):null,
+      unit_id:t.unitId||null,
+      task_note:t.taskNote.trim()||null,
+      sort_order:t.sortOrder?parseInt(t.sortOrder):null,
+      is_optional:t.isOptional||false
+    }));
+    if(validTasks.length) await db.post('meal_tasks',validTasks);
+    S.meals=await db.get('meals?order=name&select=id,name,notes,last_made_date,created_at');
+    if(editId) S.viewingMeal=S.meals.find(m=>m.id===editId);
+    closeModal(); toast(editId?'Meal updated!':'Meal saved!'); render();
+  }catch(e){ toast('Error saving: '+e.message); }
+}
+
+async function confirmDeleteMeal(id){
+  if(!confirm('Delete this meal? Cannot be undone.'))return;
+  try{
+    await db.del(`meals?id=eq.${id}`);
+    S.meals=S.meals.filter(m=>m.id!==id);
+    S.viewingMeal=null; S.tab='meals';
+    toast('Meal deleted'); render();
+  }catch(e){ toast('Error deleting'); }
 }
 
 async function renderTagList(){
