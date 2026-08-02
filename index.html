@@ -691,7 +691,7 @@ function renderXrefFiltered(){
     const matchedRecipes=Object.entries(recipeIngs).filter(([id])=>matchingRecipeIds.has(id));
     let html=`<div style="font-size:12px;color:var(--brown-light);margin-bottom:12px;padding:8px 10px;background:var(--cream2);border-radius:var(--radius-sm)">Compound search: <strong>${esc(compoundQ)}</strong> — ${matchedRecipes.length} recipe${matchedRecipes.length===1?'':'s'} found</div>`;
     html+=`<div class="xref-card"><div class="xref-header">Matching recipes<span class="xref-shared-badge">${matchedRecipes.length}</span></div>`;
-    html+=matchedRecipes.map(([id,{name}])=>`<div class="xref-row"><span class="xref-recipe">${esc(name)}</span></div>`).join('');
+    html+=matchedRecipes.map(([id,{name}])=>`<div class="xref-row" style="cursor:pointer" onclick="viewRecipeFromXref('${id}')"><span class="xref-recipe">${esc(name)}</span></div>`).join('');
     html+=`</div>`;
     c.innerHTML=html;
     return;
@@ -714,11 +714,11 @@ function renderXrefFiltered(){
   let html='';
   if(shared.length){
     html+='<div class="section-label">Shared across recipes</div>';
-    html+=shared.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+    html+=shared.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}<span class="xref-shared-badge">${Object.keys(x.recipes).length} recipes</span></div>${Object.entries(x.recipes).map(([id,n])=>`<div class="xref-row" style="cursor:pointer" onclick="viewRecipeFromXref('${id}')"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
   }
   if(single.length){
     html+='<div class="section-label" style="margin-top:16px">Used in one recipe</div>';
-    html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.values(x.recipes).map(n=>`<div class="xref-row"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
+    html+=single.map(x=>`<div class="xref-card"><div class="xref-header">${esc(x.name)}</div>${Object.entries(x.recipes).map(([id,n])=>`<div class="xref-row" style="cursor:pointer" onclick="viewRecipeFromXref('${id}')"><span class="xref-recipe">${esc(n)}</span></div>`).join('')}</div>`).join('');
   }
   c.innerHTML=html;
 }
@@ -872,6 +872,24 @@ async function confirmDeleteSidebar(id){
     S.viewingSidebar=null; S.tab='sidebars';
     toast('Sidebar deleted'); render();
   }catch(e){ toast('Error deleting'); }
+}
+
+async function viewRecipeFromXref(id){
+  // Switch to recipes tab and open that recipe detail
+  S.tab='recipes';
+  S.searchQ=''; S.compoundQ='';
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  // Find in already-loaded recipes, or fetch it
+  let r=S.recipes.find(x=>x.id===id);
+  if(!r){
+    // Recipe may be in cache but not loaded (e.g. draft) — skip gracefully
+    toast('Recipe not found in main list');
+    return;
+  }
+  S.viewingRecipe=r;
+  S.currentScale=1;
+  await acquireWakeLock();
+  render();
 }
 
 async function renderTagList(){
