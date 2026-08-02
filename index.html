@@ -26,7 +26,6 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .topbar { padding: 14px 16px 10px; background: var(--cream); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .topbar-title { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; flex: 1; color: var(--brown); display: flex; align-items: baseline; gap: 3px; }
 .topbar-back { background: none; border: none; cursor: pointer; color: var(--brown-light); font-size: 22px; padding: 0; display: flex; align-items: center; }
-.info-btn { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--brown-light); color: var(--brown-light); text-decoration: none; font-size: 9px; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; vertical-align: super; line-height: 1; margin-bottom: 6px; }
 .info-btn:hover { border-color: var(--accent); color: var(--accent); }
 .wake-icon { font-size: 11px; color: var(--green); margin-left: 2px; vertical-align: super; line-height: 1; }
 .nav { display: flex; background: var(--cream); border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -194,6 +193,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="nav-btn" onclick="switchTab('sidebars')">Sidebars</button>
     <button class="nav-btn" onclick="switchTab('meals')">Meals</button>
     <button class="nav-btn" onclick="switchTab('storage')">Storage</button>
+    <button class="nav-btn" onclick="openReference()">Reference</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
     <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
@@ -230,8 +230,7 @@ const db = {
 };
 
 function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-const INFO_BTN = '<a href="./decent-eats-reference.html" target="_blank" class="info-btn" title="Project reference">i</a>';
-function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + INFO_BTN + (wakeLock ? '<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>' : ''); }
+function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + (wakeLock ? '<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>' : ''); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function toFraction(d){
   if(d==null)return''; d=Number(d); if(Number.isInteger(d))return String(d);
@@ -371,6 +370,10 @@ function render(){
   }
 }
 
+function openReference(){
+  window.open('./decent-eats-reference.html', '_blank');
+}
+
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
@@ -401,7 +404,7 @@ function releaseWakeLock(){
   if(wakeLock){ wakeLock.release(); wakeLock=null; refreshTitleIcon(); }
 }
 function refreshTitleIcon(){
-  setTitle(S.viewingRecipe ? S.viewingRecipe.name : 'Decent Eats');
+  setTitle(S.viewingRecipe ? S.viewingRecipe.name : S.viewingSidebar ? S.viewingSidebar.title : S.viewingMeal ? S.viewingMeal.name : 'Decent Eats');
   const checklistTitle = document.getElementById('checklist-title');
   if(checklistTitle && S.viewingRecipe){
     checklistTitle.innerHTML = esc(S.viewingRecipe.name) + (wakeLock?'<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>':'');
