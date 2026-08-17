@@ -1627,19 +1627,23 @@ function openIngredientImport(){
     <div class="modal-header"><div class="modal-title">Import ingredients</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div style="font-size:13px;color:var(--brown-light);margin-bottom:16px;line-height:1.6">
-        Download the blank template, fill it in, then upload it here. Valid types: <strong>fat, protein, vegetable, other</strong> (or leave blank).
+        Download a template, fill in ingredients (columns A=name, B=type), then upload. Column D onwards lists all valid types for reference.
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <button class="btn" onclick="downloadIngredientTemplate()" style="text-align:left;padding:12px 14px">
-          <div style="font-weight:500;margin-bottom:2px">↓ Download blank template</div>
-          <div style="font-size:12px;color:var(--brown-light)">ingredients_template.csv</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <button class="btn" onclick="downloadIngredientTemplate(false)" style="text-align:left;padding:10px 14px">
+          <div style="font-weight:500;margin-bottom:2px">↓ Blank template</div>
+          <div style="font-size:12px;color:var(--brown-light)">Just the headers + one example row</div>
         </button>
-        <div style="border-top:1px solid var(--border);padding-top:12px">
-          <div class="field"><label>Upload filled template</label>
-            <input type="file" id="ing-csv-file" accept=".csv" style="font-size:13px;font-family:'DM Sans',sans-serif" onchange="previewIngredientCsv(this)">
-          </div>
-          <div id="ing-import-preview" style="margin-top:8px"></div>
+        <button class="btn" onclick="downloadIngredientTemplate(true)" style="text-align:left;padding:10px 14px">
+          <div style="font-weight:500;margin-bottom:2px">↓ Template with existing ingredients</div>
+          <div style="font-size:12px;color:var(--brown-light)">All ${S.ingredients.length} current ingredients pre-filled — add new rows below or leave existing (they'll be skipped as duplicates)</div>
+        </button>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div class="field"><label>Upload filled template</label>
+          <input type="file" id="ing-csv-file" accept=".csv" style="font-size:13px;font-family:'DM Sans',sans-serif" onchange="previewIngredientCsv(this)">
         </div>
+        <div id="ing-import-preview" style="margin-top:8px"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1648,12 +1652,24 @@ function openIngredientImport(){
     </div>`);
 }
 
-function downloadIngredientTemplate(){
-  const csv = `name,type\n# Type must be one of: fat, protein, vegetable, other (or leave blank)\nExample Ingredient,vegetable\n`;
+function downloadIngredientTemplate(includeExisting=false){
+  const typeNames = S.types.map(t=>t.name);
+  // Build rows: col A=name, col B=type, col C=blank, col D onwards = valid types reference
+  const headerRow = ['name','type','','Valid types:'].concat(typeNames).join(',');
+  const rows = [headerRow];
+  if(includeExisting){
+    for(const ing of S.ingredients){
+      const typeName = ing.ingredient_types?.name||'';
+      rows.push(`"${ing.name.replace(/"/g,'""')}","${typeName}",,`);
+    }
+  } else {
+    rows.push(`"Example Ingredient","vegetable",,`);
+  }
+  const csv = rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ingredients_template.csv';
+  a.download = includeExisting?'ingredients_with_existing.csv':'ingredients_template.csv';
   a.click();
 }
 
@@ -1673,7 +1689,15 @@ function previewIngredientCsv(input){
     _parsedIngRows = [];
     const preview = [];
     for(const line of dataLines){
-      const parts = line.split(',');
+      // Parse quoted CSV fields (only need first two columns)
+      let parts;
+      if(line.startsWith('"')){
+        // quoted CSV - extract first two quoted fields
+        const matches = [...line.matchAll(/"((?:[^"]|"")*)"/g)];
+        parts = matches.map(m=>m[1].replace(/""/g,'"'));
+      } else {
+        parts = line.split(',');
+      }
       const name = (parts[0]||'').trim();
       const typeRaw = (parts[1]||'').trim().toLowerCase();
       if(!name) continue;
