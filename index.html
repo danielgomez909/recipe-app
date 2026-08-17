@@ -163,6 +163,42 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .login-btn { width: 100%; padding: 13px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer; transition: background .15s; }
 .login-btn:hover { background: var(--brown-mid); }
 .login-error { font-size: 13px; color: #dc3545; text-align: center; min-height: 18px; }
+/* Reference tab */
+.ref-doc { padding: 4px 0 40px; }
+.ref-doc h1 { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; color: var(--brown); margin-bottom: 4px; }
+.ref-doc h2 { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--brown); margin: 24px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.ref-doc h3 { font-size: 14px; font-weight: 600; color: var(--brown); margin: 16px 0 8px; }
+.ref-doc p { font-size: 13px; line-height: 1.65; color: var(--brown); margin-bottom: 10px; }
+.ref-doc code { font-size: 12px; background: var(--cream2); padding: 1px 5px; border-radius: 4px; font-family: 'DM Mono', monospace; }
+.ref-subtitle { font-size: 12px; color: var(--brown-light); margin-bottom: 4px; }
+.ref-schema { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px; overflow: hidden; }
+.ref-schema-header { background: var(--cream2); padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; }
+.ref-schema-name { font-size: 13px; font-weight: 600; color: var(--brown); font-family: 'DM Mono', monospace; }
+.ref-schema-desc { font-size: 12px; color: var(--brown-light); }
+.ref-schema-row { display: grid; grid-template-columns: 160px 80px 1fr; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.ref-schema-row:last-child { border-bottom: none; }
+.ref-col { color: var(--brown); font-family: 'DM Mono', monospace; }
+.ref-type { color: var(--accent); }
+.ref-desc { color: var(--brown-light); }
+.ref-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+.ref-pk { background: var(--accent-light); color: var(--accent); }
+.ref-fk { background: var(--green-light); color: var(--green); }
+.ref-backlog { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px; }
+.ref-backlog-item { font-size: 13px; color: var(--brown); padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start; }
+.ref-backlog-item:last-child { border-bottom: none; }
+.ref-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
+.ref-tag-ux { background: #e3f0fb; color: #1a6fa8; }
+.ref-tag-feature { background: var(--green-light); color: var(--green); }
+.ref-tag-data { background: var(--accent-light); color: var(--accent); }
+.ref-version { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+.ref-version-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.ref-version-row:last-child { border-bottom: none; }
+.ref-version-date { color: var(--brown-light); font-weight: 500; }
+.ref-version-desc { color: var(--brown); line-height: 1.5; }
+.ref-info { background: var(--green-light); border: 1px solid rgba(74,103,65,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--green); margin-bottom: 12px; line-height: 1.6; }
+.ref-step { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.ref-step:last-child { border-bottom: none; }
+.ref-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -194,7 +230,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="nav-btn" onclick="switchTab('sidebars')">Sidebars</button>
     <button class="nav-btn" onclick="switchTab('meals')">Meals</button>
     <button class="nav-btn" onclick="switchTab('storage')">Storage</button>
-    <button class="nav-btn" onclick="openReference()">Reference</button>
+    <button class="nav-btn" onclick="switchTab('reference')">Reference</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
     <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
@@ -355,6 +391,12 @@ function render(){
     document.getElementById('search-input').placeholder='Search storage...';
     document.getElementById('sub-nav').style.display='none';
     renderStorageList();
+  } else if(S.tab==='reference'){
+    addBtn.style.display='none';
+    if(importBtn) importBtn.style.display='none';
+    searchBar.style.display='none';
+    document.getElementById('sub-nav').style.display='none';
+    renderReferenceTab();
   } else if(S.tab==='meals'){
     addBtn.style.display=''; addBtn.textContent='+ Meal';
     addBtn.onclick=openAddMeal;
@@ -375,16 +417,148 @@ function render(){
   }
 }
 
-function openReference(){
-  window.open('./decent-eats-reference.html', '_blank');
+function renderReferenceTab(){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="ref-doc">
+  <h1>🍳 Decent Eats</h1>
+  <p class="ref-subtitle">Project Reference — last updated August 2026</p>
+
+  <h2>Overview</h2>
+  <p>Decent Eats is a personal recipe management PWA. Features: recipe CRUD with ingredient master list, or-groups, prep notes, scaling, checklist cook mode, tagging, draft recipe cleanup workflow, sidebars (Markdown essays), saved meal plans with cook-a-meal checklist, food storage tracker, and compound ingredient cross-reference search.</p>
+
+  <h2>Architecture</h2>
+  <p><strong>Frontend:</strong> Single <code>index.html</code> — no framework, vanilla JS. Hosted on Vercel, auto-deploys from GitHub main branch.</p>
+  <p><strong>Database:</strong> Supabase PostgreSQL — project <code>ntrhptxetvdjhoqfaytl</code>. Shared across all Decent apps.</p>
+  <p><strong>Auth:</strong> SHA-256 passphrase hash stored in localStorage (<code>de_auth_v1</code>). To log out: <code>localStorage.removeItem('de_auth_v1')</code> in browser console.</p>
+  <p><strong>Repo:</strong> github.com/danielgomez909/recipe-app (main branch → Vercel auto-deploy ~30s)</p>
+
+  <h2>Deployment</h2>
+  <div class="ref-schema" style="margin-bottom:0">
+    <div class="ref-step"><div class="ref-step-num">1</div><div>Download updated <code>index.html</code> from Claude</div></div>
+    <div class="ref-step"><div class="ref-step-num">2</div><div>Open GitHub repo → click the file → pencil icon → drag-and-drop replacement</div></div>
+    <div class="ref-step"><div class="ref-step-num">3</div><div>Commit changes → Vercel auto-deploys in ~30 seconds</div></div>
+  </div>
+  <p style="margin-top:10px;font-size:12px;color:var(--brown-light)">Schema changes: Supabase → SQL Editor → run SQL → update app code → deploy.</p>
+
+  <h2>Database Schema</h2>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">recipes</span><span class="ref-schema-desc">Core recipe table</span></div>
+    <div class="ref-schema-row"><span class="ref-col">id <span class="ref-badge ref-pk">PK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Auto-generated</span></div>
+    <div class="ref-schema-row"><span class="ref-col">name</span><span class="ref-type">text</span><span class="ref-desc">Required. Prefixed with [DRAFT] for drafts.</span></div>
+    <div class="ref-schema-row"><span class="ref-col">source</span><span class="ref-type">text</span><span class="ref-desc">URL, book, or person</span></div>
+    <div class="ref-schema-row"><span class="ref-col">serves</span><span class="ref-type">text</span><span class="ref-desc">Free text e.g. "4" or "6–8"</span></div>
+    <div class="ref-schema-row"><span class="ref-col">notes</span><span class="ref-type">text</span><span class="ref-desc">Freeform notes and variations</span></div>
+    <div class="ref-schema-row"><span class="ref-col">prep_time / cook_time / total_time</span><span class="ref-type">text</span><span class="ref-desc">Free text e.g. "15 min"</span></div>
+    <div class="ref-schema-row"><span class="ref-col">video_url</span><span class="ref-type">text</span><span class="ref-desc">Optional YouTube or other video link</span></div>
+    <div class="ref-schema-row"><span class="ref-col">is_draft</span><span class="ref-type">boolean</span><span class="ref-desc">Default false. Drafts hidden from Recipes tab.</span></div>
+    <div class="ref-schema-row"><span class="ref-col">raw_import_text</span><span class="ref-type">text</span><span class="ref-desc">Original text blob from import source</span></div>
+    <div class="ref-schema-row"><span class="ref-col">import_source_url</span><span class="ref-type">text</span><span class="ref-desc">Link back to original source (blog/Trello)</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">ingredient_master</span><span class="ref-schema-desc">Master ingredient list</span></div>
+    <div class="ref-schema-row"><span class="ref-col">id <span class="ref-badge ref-pk">PK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Auto-generated</span></div>
+    <div class="ref-schema-row"><span class="ref-col">name</span><span class="ref-type">text</span><span class="ref-desc">Unique ingredient name</span></div>
+    <div class="ref-schema-row"><span class="ref-col">type_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">int</span><span class="ref-desc">References ingredient_types.id — nullable</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">recipe_ingredients</span><span class="ref-schema-desc">Ingredients per recipe</span></div>
+    <div class="ref-schema-row"><span class="ref-col">recipe_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Cascades on delete</span></div>
+    <div class="ref-schema-row"><span class="ref-col">ingredient_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">References ingredient_master.id</span></div>
+    <div class="ref-schema-row"><span class="ref-col">quantity</span><span class="ref-type">numeric</span><span class="ref-desc">Stored as decimal, displayed as fraction</span></div>
+    <div class="ref-schema-row"><span class="ref-col">unit_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">int</span><span class="ref-desc">Nullable — references units.id</span></div>
+    <div class="ref-schema-row"><span class="ref-col">or_group</span><span class="ref-type">int</span><span class="ref-desc">Nullable — same number = swappable alternatives</span></div>
+    <div class="ref-schema-row"><span class="ref-col">prep_note</span><span class="ref-type">text</span><span class="ref-desc">e.g. "diced", "minced", "shredded"</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">recipe_steps</span><span class="ref-schema-desc">Ordered program steps</span></div>
+    <div class="ref-schema-row"><span class="ref-col">recipe_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Cascades on delete</span></div>
+    <div class="ref-schema-row"><span class="ref-col">step_number</span><span class="ref-type">int</span><span class="ref-desc">1-based display order</span></div>
+    <div class="ref-schema-row"><span class="ref-col">instruction</span><span class="ref-type">text</span><span class="ref-desc">Step text</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">tags / recipe_tags / sidebar_tags / meal_tags</span><span class="ref-schema-desc">Tagging across entities</span></div>
+    <div class="ref-schema-row"><span class="ref-col">tags.name</span><span class="ref-type">text</span><span class="ref-desc">Unique tag name</span></div>
+    <div class="ref-schema-row"><span class="ref-col">*_tags</span><span class="ref-type">junction</span><span class="ref-desc">Composite PK, cascade on delete</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">sidebars</span><span class="ref-schema-desc">Cooking essays and notes — Markdown body</span></div>
+    <div class="ref-schema-row"><span class="ref-col">title</span><span class="ref-type">text</span><span class="ref-desc">Required</span></div>
+    <div class="ref-schema-row"><span class="ref-col">body</span><span class="ref-type">text</span><span class="ref-desc">Markdown — rendered in app</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">meals + meal_task_types + meal_tasks</span><span class="ref-schema-desc">Saved meal plans</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meals.name</span><span class="ref-type">text</span><span class="ref-desc">Required. Notes = Markdown.</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meals.last_made_date</span><span class="ref-type">date</span><span class="ref-desc">Nullable</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_task_types</span><span class="ref-type">ref</span><span class="ref-desc">'recipe', 'ingredient', 'task'</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_tasks.recipe_id</span><span class="ref-type">uuid</span><span class="ref-desc">Nullable FK — used when type=recipe</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_tasks.ingredient_id</span><span class="ref-type">uuid</span><span class="ref-desc">Nullable FK — used when type=ingredient</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_tasks.task_note</span><span class="ref-type">text</span><span class="ref-desc">Text for standalone tasks; annotation for recipe/ingredient tasks</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_tasks.sort_order</span><span class="ref-type">int</span><span class="ref-desc">Nullable, non-unique — parallel tasks share same number</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_tasks.is_optional</span><span class="ref-type">boolean</span><span class="ref-desc">Default false</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">storage_locations + food_storage</span><span class="ref-schema-desc">Food inventory tracker</span></div>
+    <div class="ref-schema-row"><span class="ref-col">storage_locations.name</span><span class="ref-type">text</span><span class="ref-desc">fridge, freezer, pantry, counter (extensible)</span></div>
+    <div class="ref-schema-row"><span class="ref-col">food_storage.ingredient_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Required</span></div>
+    <div class="ref-schema-row"><span class="ref-col">food_storage.quantity</span><span class="ref-type">text</span><span class="ref-desc">Free text e.g. "2 lbs", "half bag"</span></div>
+    <div class="ref-schema-row"><span class="ref-col">food_storage.expiration_date</span><span class="ref-type">date</span><span class="ref-desc">Nullable — red badge if expired, orange if within 7 days</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">units + ingredient_types</span><span class="ref-schema-desc">Reference tables</span></div>
+    <div class="ref-schema-row"><span class="ref-col">units</span><span class="ref-type">ref</span><span class="ref-desc">Volume + weight, English + metric, with base_multiplier for conversion</span></div>
+    <div class="ref-schema-row"><span class="ref-col">ingredient_types</span><span class="ref-type">ref</span><span class="ref-desc">fat, protein, vegetable, other, liquid, etc.</span></div>
+  </div>
+
+  <h2>Bulk Import History</h2>
+  <div class="ref-info">Total drafts after both imports: 477. Use the Draft Recipes tab to review — save to promote, delete to discard. Manual draft creation also available.</div>
+  <p><strong>Blog migration (116):</strong> gomezcookery.blogspot.com saved as Decent_Eats_A/B/C.html. Source files in GitHub repo (.vercelignored).</p>
+  <p><strong>Trello migration (361):</strong> trello_recipes_open_cards.xlsx. 114 likely duplicates flagged in raw_import_text. Source file in GitHub repo (.vercelignored).</p>
+
+  <h2>Feature Backlog</h2>
+  <div class="ref-backlog">
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Clicking a tag on recipe detail navigates to Tag Search filtered to that tag</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Manual unit override for scaled recipes — user picks display unit manually</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Equipment field — needs schema design (equipment_master ref table + junction, not free text)</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Food storage "What can I make?" — cross-reference inventory against recipes. Design TBD.</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Security</span>Supabase RLS — lower priority now that passphrase auth is in place</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Data</span>General-purpose bulk recipe template loader</div>
+  </div>
+
+  <h2>Version History</h2>
+  <div class="ref-version">
+    <div class="ref-version-row"><span class="ref-version-date">May 2026</span><span class="ref-version-desc">Initial build — recipe CRUD, ingredient master, or-groups, steps, cross-reference, search.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">May 2026</span><span class="ref-version-desc">Bug fixes — FM object pattern, dropdown clipping, fraction input, pinch unit.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">June 2026</span><span class="ref-version-desc">Wake lock, step sequence numbers, ingredient auto-select, ⓘ button, app icon.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">June 2026</span><span class="ref-version-desc">Tagging system — tags, recipe_tags, Tags tab with Tag List and Tag Search.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">June 2026</span><span class="ref-version-desc">Wake lock eye icon. Bulk migration: 116 blog + 361 Trello drafts. Draft Recipes tab with cleanup workflow and Delete Draft button.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">June 2026</span><span class="ref-version-desc">Checklist mode ("Cook this recipe") — full-screen, scroll-preserved, wake lock.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">June 2026</span><span class="ref-version-desc">Recipe scaling (1x–10x, arithmetic, unit preserved). Passphrase authentication.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">July 2026</span><span class="ref-version-desc">Ingredient prep notes. Manual draft creation. Recipe timing + video URL fields. Sidebars tab with Markdown. Cross-ref compound search (&&/||/()). Clickable xref results.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">July 2026</span><span class="ref-version-desc">Meals tab — meal_tasks schema (recipe/ingredient/task types), cook-a-meal checklist expanding recipes inline, up/down block reordering, visual distinction by task type.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">July 2026</span><span class="ref-version-desc">Food Storage tab — food_storage + storage_locations schema. Grouped by location, expiration badges.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Edit ingredients in master list. Bulk ingredient CSV import with template download (blank + with-existing), duplicate detection, type update support, proper quoted CSV parsing.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Reference doc moved inline — embedded as Reference nav tab in index.html (iPad-safe, no new-tab navigation trap).</span></div>
+  </div>
+</div>`;
 }
+
+function openReference(){ switchTab('reference'); }
 
 function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
   S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.viewingMeal=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)||(tab==='meals'&&i===6)||(tab==='storage'&&i===7)));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)||(tab==='meals'&&i===6)||(tab==='storage'&&i===7)||(tab==='reference'&&i===8)));
   render();
 }
 
