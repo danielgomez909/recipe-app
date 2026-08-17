@@ -582,12 +582,53 @@ async function viewDraft(id){
 
 async function renderIngredientList(){
   const c=document.getElementById('content');
-  // refresh from DB to catch newly added ingredients
   S.ingredients=await db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)');
   let list=S.ingredients;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(i=>i.name.toLowerCase().includes(q)); }
   if(!list.length){ c.innerHTML='<div class="empty"><h3>No ingredients yet</h3><p>Add ingredients to your master list.</p></div>'; return; }
-  c.innerHTML=`<div class="detail-section"><div style="padding:0">${list.map(i=>`<div class="ing-master-row"><span style="flex:1">${esc(i.name)}</span><span class="ing-type-badge">${esc(i.ingredient_types?.name||'—')}</span></div>`).join('')}</div></div>`;
+  c.innerHTML=`<div class="detail-section"><div style="padding:0">${list.map(i=>`
+    <div class="ing-master-row" style="cursor:pointer" onclick="openEditIngredient('${i.id}','${esc(i.name)}',${i.type_id||'null'})">
+      <span style="flex:1">${esc(i.name)}</span>
+      <span class="ing-type-badge">${esc(i.ingredient_types?.name||'—')}</span>
+      <span style="font-size:12px;color:var(--brown-light);margin-left:8px">›</span>
+    </div>`).join('')}</div></div>`;
+}
+
+function openEditIngredient(id, name, typeId){
+  const typeOptions=S.types.map(t=>`<option value="${t.id}"${t.id==typeId?' selected':''}>${esc(t.name)}</option>`).join('');
+  openModal(`
+    <div class="modal-header"><div class="modal-title">Edit ingredient</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="ei-name" value="${esc(name)}"></div>
+      <div class="field"><label>Type</label><select id="ei-type"><option value="">— select —</option>${typeOptions}</select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="confirmDeleteIngredient('${id}','${esc(name)}')" style="margin-right:auto">Delete</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditIngredient('${id}')">Save</button>
+    </div>`);
+}
+
+async function saveEditIngredient(id){
+  const name=document.getElementById('ei-name').value.trim();
+  if(!name){ toast('Name required'); return; }
+  const typeId=document.getElementById('ei-type').value;
+  try{
+    await db.patch(`ingredient_master?id=eq.${id}`,{name,type_id:typeId||null});
+    toast(`"${name}" updated`);
+    closeModal();
+    renderIngredientList();
+  }catch(e){ toast('Error updating: '+e.message); }
+}
+
+async function confirmDeleteIngredient(id, name){
+  if(!confirm(`Delete "${name}"? This will fail if the ingredient is used in any recipe.`))return;
+  try{
+    await db.del(`ingredient_master?id=eq.${id}`);
+    toast(`"${name}" deleted`);
+    closeModal();
+    renderIngredientList();
+  }catch(e){ toast('Cannot delete — ingredient may be in use'); }
 }
 
 async function renderXref(){
