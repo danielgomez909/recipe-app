@@ -1690,15 +1690,24 @@ function previewIngredientCsv(input){
     _parsedIngRows = [];
     const preview = [];
     for(const line of dataLines){
-      let parts;
-      if(line.startsWith('"')){
-        const matches = [...line.matchAll(/"((?:[^"]|"")*)"/g)];
-        parts = matches.map(m=>m[1].replace(/""/g,'"'));
-      } else {
-        parts = line.split(',');
+      // Proper CSV field parser - handles quoted fields with embedded commas
+      const fields = [];
+      let i=0, field='', inQuote=false;
+      while(i<line.length){
+        const ch=line[i];
+        if(inQuote){
+          if(ch==='"'&&line[i+1]==='"'){ field+='"'; i+=2; }
+          else if(ch==='"'){ inQuote=false; i++; }
+          else { field+=ch; i++; }
+        } else {
+          if(ch==='"'){ inQuote=true; i++; }
+          else if(ch===','){ fields.push(field); field=''; i++; }
+          else { field+=ch; i++; }
+        }
       }
-      const name = (parts[0]||'').trim();
-      const typeRaw = (parts[1]||'').trim().toLowerCase();
+      fields.push(field);
+      const name = (fields[0]||'').trim();
+      const typeRaw = (fields[1]||'').trim().toLowerCase();
       if(!name) continue;
       const existing = existingMap.get(name.toLowerCase());
       const isDupe = !!existing;
