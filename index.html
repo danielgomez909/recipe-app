@@ -183,6 +183,7 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Back">&#8592;</button>
     <div class="topbar-title" id="topbar-title">Decent Eats</div>
     <button class="btn btn-sm btn-primary" id="add-btn" onclick="openAddRecipe()">+ Recipe</button>
+    <button class="btn btn-sm" id="import-btn" style="display:none" onclick="openIngredientImport()">↑ Import</button>
   </div>
   <div class="nav" id="main-nav">
     <button class="nav-btn active" onclick="switchTab('recipes')">Recipes</button>
@@ -288,6 +289,9 @@ function render(){
   const backBtn = document.getElementById('back-btn');
   const nav = document.getElementById('main-nav');
 
+  const importBtn=document.getElementById('import-btn');
+  if(importBtn) importBtn.style.display='none';
+
   if(S.viewingRecipe){
     backBtn.style.display=''; addBtn.style.display='none';
     nav.style.display='none'; searchBar.style.display='none';
@@ -319,6 +323,7 @@ function render(){
   } else if(S.tab==='ingredients'){
     addBtn.style.display=''; addBtn.textContent='+ Ingredient';
     addBtn.onclick=openAddIngredient;
+    if(importBtn) importBtn.style.display='';
     searchBar.style.display='';
     document.getElementById('search-input').placeholder='Search ingredients...';
     document.getElementById('sub-nav').style.display='none';
@@ -1616,6 +1621,103 @@ function setRecipeScale(val){
 }
 
 // ---- Add Ingredient (standalone) ----
+// ---- Ingredient CSV Import ----
+function openIngredientImport(){
+  openModal(`
+    <div class="modal-header"><div class="modal-title">Import ingredients</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--brown-light);margin-bottom:16px;line-height:1.6">
+        Download the blank template, fill it in, then upload it here. Valid types: <strong>fat, protein, vegetable, other</strong> (or leave blank).
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button class="btn" onclick="downloadIngredientTemplate()" style="text-align:left;padding:12px 14px">
+          <div style="font-weight:500;margin-bottom:2px">↓ Download blank template</div>
+          <div style="font-size:12px;color:var(--brown-light)">ingredients_template.csv</div>
+        </button>
+        <div style="border-top:1px solid var(--border);padding-top:12px">
+          <div class="field"><label>Upload filled template</label>
+            <input type="file" id="ing-csv-file" accept=".csv" style="font-size:13px;font-family:'DM Sans',sans-serif" onchange="previewIngredientCsv(this)">
+          </div>
+          <div id="ing-import-preview" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="ing-import-btn" style="display:none" onclick="runIngredientImport()">Import</button>
+    </div>`);
+}
+
+function downloadIngredientTemplate(){
+  const csv = `name,type\n# Type must be one of: fat, protein, vegetable, other (or leave blank)\nExample Ingredient,vegetable\n`;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ingredients_template.csv';
+  a.click();
+}
+
+let _parsedIngRows = [];
+
+function previewIngredientCsv(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+    // skip header row
+    const dataLines = lines.filter(l=>!l.toLowerCase().startsWith('name,'));
+    const existingNames = new Set(S.ingredients.map(i=>i.name.toLowerCase().trim()));
+    const validTypes = new Set(S.types.map(t=>t.name.toLowerCase()));
+
+    _parsedIngRows = [];
+    const preview = [];
+    for(const line of dataLines){
+      const parts = line.split(',');
+      const name = (parts[0]||'').trim();
+      const typeRaw = (parts[1]||'').trim().toLowerCase();
+      if(!name) continue;
+      const isDupe = existingNames.has(name.toLowerCase());
+      const typeMatch = S.types.find(t=>t.name.toLowerCase()===typeRaw);
+      const typeWarning = typeRaw && !typeMatch ? ` <span style="color:#fd7e14">(unknown type "${esc(typeRaw)}" — will be blank)</span>` : '';
+      _parsedIngRows.push({name, typeId: typeMatch?.id||null, isDupe});
+      preview.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="flex:1">${esc(name)}${typeWarning}</span>
+        <span class="ing-type-badge">${esc(typeMatch?.name||'—')}</span>
+        ${isDupe?'<span style="font-size:11px;background:#fd7e14;color:white;padding:2px 6px;border-radius:4px">duplicate</span>':''}
+      </div>`);
+    }
+
+    const newCount = _parsedIngRows.filter(r=>!r.isDupe).length;
+    const dupeCount = _parsedIngRows.filter(r=>r.isDupe).length;
+    const prevEl = document.getElementById('ing-import-preview');
+    const importBtn = document.getElementById('ing-import-btn');
+    if(!_parsedIngRows.length){
+      prevEl.innerHTML='<div style="font-size:13px;color:var(--brown-light)">No valid rows found in file.</div>';
+      if(importBtn) importBtn.style.display='none';
+      return;
+    }
+    prevEl.innerHTML=`
+      <div style="font-size:12px;color:var(--brown-light);margin-bottom:8px">${newCount} to import, ${dupeCount} duplicate${dupeCount===1?'':'s'} will be skipped</div>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px">${preview.join('')}</div>`;
+    if(importBtn) importBtn.style.display = newCount>0?'':'none';
+  };
+  reader.readAsText(file);
+}
+
+async function runIngredientImport(){
+  const toInsert = _parsedIngRows.filter(r=>!r.isDupe);
+  if(!toInsert.length){ toast('Nothing to import'); return; }
+  try{
+    const rows = toInsert.map(r=>({name:r.name, type_id:r.typeId||null}));
+    await db.post('ingredient_master', rows);
+    S.ingredients = await db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)');
+    closeModal();
+    toast(`${toInsert.length} ingredient${toInsert.length===1?'':'s'} imported`);
+    renderIngredientList();
+  }catch(e){ toast('Error importing: '+e.message); }
+}
+
 function openAddIngredient(){
   openModal(`
     <div class="modal-header"><div class="modal-title">New ingredient</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
