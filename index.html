@@ -1643,6 +1643,9 @@ function openIngredientImport(){
         <div class="field"><label>Upload filled template</label>
           <input type="file" id="ing-csv-file" accept=".csv" style="font-size:13px;font-family:'DM Sans',sans-serif" onchange="previewIngredientCsv(this)">
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--brown);margin-top:10px;cursor:pointer">
+          <input type="checkbox" id="ing-update-existing"> Update type for existing ingredients if changed
+        </label>
         <div id="ing-import-preview" style="margin-top:8px"></div>
       </div>
     </div>
@@ -1681,18 +1684,14 @@ function previewIngredientCsv(input){
   const reader = new FileReader();
   reader.onload = e => {
     const lines = e.target.result.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
-    // skip header row
     const dataLines = lines.filter(l=>!l.toLowerCase().startsWith('name,'));
-    const existingNames = new Set(S.ingredients.map(i=>i.name.toLowerCase().trim()));
-    const validTypes = new Set(S.types.map(t=>t.name.toLowerCase()));
+    const existingMap = new Map(S.ingredients.map(i=>[i.name.toLowerCase().trim(), i]));
 
     _parsedIngRows = [];
     const preview = [];
     for(const line of dataLines){
-      // Parse quoted CSV fields (only need first two columns)
       let parts;
       if(line.startsWith('"')){
-        // quoted CSV - extract first two quoted fields
         const matches = [...line.matchAll(/"((?:[^"]|"")*)"/g)];
         parts = matches.map(m=>m[1].replace(/""/g,'"'));
       } else {
@@ -1701,19 +1700,29 @@ function previewIngredientCsv(input){
       const name = (parts[0]||'').trim();
       const typeRaw = (parts[1]||'').trim().toLowerCase();
       if(!name) continue;
-      const isDupe = existingNames.has(name.toLowerCase());
+      const existing = existingMap.get(name.toLowerCase());
+      const isDupe = !!existing;
       const typeMatch = S.types.find(t=>t.name.toLowerCase()===typeRaw);
-      const typeWarning = typeRaw && !typeMatch ? ` <span style="color:#fd7e14">(unknown type "${esc(typeRaw)}" — will be blank)</span>` : '';
-      _parsedIngRows.push({name, typeId: typeMatch?.id||null, isDupe});
+      const typeWarning = typeRaw && !typeMatch ? ` <span style="color:#fd7e14">(unknown type)</span>` : '';
+      // detect type change: existing ingredient has a different type than what's in the CSV
+      const existingTypeName = existing?.ingredient_types?.name?.toLowerCase()||'';
+      const newTypeName = typeMatch?.name?.toLowerCase()||'';
+      const typeChanged = isDupe && typeRaw && typeMatch && existingTypeName !== newTypeName;
+      _parsedIngRows.push({name, typeId:typeMatch?.id||null, isDupe, typeChanged, existingId:existing?.id||null, existingTypeName, newTypeName:typeMatch?.name||''});
+      let badge = '';
+      if(!isDupe) badge = '';
+      else if(typeChanged) badge = `<span style="font-size:11px;background:var(--green);color:white;padding:2px 6px;border-radius:4px">type update</span>`;
+      else badge = `<span style="font-size:11px;background:#fd7e14;color:white;padding:2px 6px;border-radius:4px">duplicate</span>`;
       preview.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
         <span style="flex:1">${esc(name)}${typeWarning}</span>
         <span class="ing-type-badge">${esc(typeMatch?.name||'—')}</span>
-        ${isDupe?'<span style="font-size:11px;background:#fd7e14;color:white;padding:2px 6px;border-radius:4px">duplicate</span>':''}
+        ${badge}
       </div>`);
     }
 
     const newCount = _parsedIngRows.filter(r=>!r.isDupe).length;
-    const dupeCount = _parsedIngRows.filter(r=>r.isDupe).length;
+    const dupeCount = _parsedIngRows.filter(r=>r.isDupe&&!r.typeChanged).length;
+    const updateCount = _parsedIngRows.filter(r=>r.typeChanged).length;
     const prevEl = document.getElementById('ing-import-preview');
     const importBtn = document.getElementById('ing-import-btn');
     if(!_parsedIngRows.length){
@@ -1721,23 +1730,36 @@ function previewIngredientCsv(input){
       if(importBtn) importBtn.style.display='none';
       return;
     }
+    const summary = [
+      newCount?`${newCount} to add`:'',
+      updateCount?`${updateCount} type update${updateCount===1?'':'s'} available`:'',
+      dupeCount?`${dupeCount} duplicate${dupeCount===1?'':'s'} will be skipped`:''
+    ].filter(Boolean).join(', ');
     prevEl.innerHTML=`
-      <div style="font-size:12px;color:var(--brown-light);margin-bottom:8px">${newCount} to import, ${dupeCount} duplicate${dupeCount===1?'':'s'} will be skipped</div>
+      <div style="font-size:12px;color:var(--brown-light);margin-bottom:8px">${summary}</div>
       <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px">${preview.join('')}</div>`;
-    if(importBtn) importBtn.style.display = newCount>0?'':'none';
+    if(importBtn) importBtn.style.display = (newCount>0||updateCount>0)?'':'none';
   };
   reader.readAsText(file);
 }
 
 async function runIngredientImport(){
+  const updateExisting = document.getElementById('ing-update-existing')?.checked;
   const toInsert = _parsedIngRows.filter(r=>!r.isDupe);
-  if(!toInsert.length){ toast('Nothing to import'); return; }
+  const toUpdate = updateExisting ? _parsedIngRows.filter(r=>r.typeChanged) : [];
+  if(!toInsert.length&&!toUpdate.length){ toast('Nothing to import'); return; }
   try{
-    const rows = toInsert.map(r=>({name:r.name, type_id:r.typeId||null}));
-    await db.post('ingredient_master', rows);
+    if(toInsert.length){
+      const rows = toInsert.map(r=>({name:r.name, type_id:r.typeId||null}));
+      await db.post('ingredient_master', rows);
+    }
+    if(toUpdate.length){
+      await Promise.all(toUpdate.map(r=>db.patch(`ingredient_master?id=eq.${r.existingId}`,{type_id:r.typeId||null})));
+    }
     S.ingredients = await db.get('ingredient_master?order=name&select=id,name,type_id,ingredient_types(name)');
     closeModal();
-    toast(`${toInsert.length} ingredient${toInsert.length===1?'':'s'} imported`);
+    const parts = [toInsert.length?`${toInsert.length} added`:'', toUpdate.length?`${toUpdate.length} updated`:''].filter(Boolean);
+    toast(parts.join(', '));
     renderIngredientList();
   }catch(e){ toast('Error importing: '+e.message); }
 }
