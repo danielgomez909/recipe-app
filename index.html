@@ -222,19 +222,17 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
     <button class="btn btn-sm" id="import-btn" style="display:none" onclick="openIngredientImport()">↑ Import</button>
   </div>
   <div class="nav" id="main-nav">
-    <button class="nav-btn active" onclick="switchTab('recipes')">Recipes</button>
-    <button class="nav-btn" onclick="switchTab('ingredients')">Ingredients</button>
-    <button class="nav-btn" onclick="switchTab('xref')">Cross-ref</button>
-    <button class="nav-btn" onclick="switchTab('tags')">Tags</button>
-    <button class="nav-btn" onclick="switchTab('drafts')">Draft Recipes</button>
-    <button class="nav-btn" onclick="switchTab('sidebars')">Sidebars</button>
+    <button class="nav-btn active" onclick="switchTab('storage')">Storage</button>
     <button class="nav-btn" onclick="switchTab('meals')">Meals</button>
-    <button class="nav-btn" onclick="switchTab('storage')">Storage</button>
+    <button class="nav-btn" onclick="switchTab('recipes')">Recipes</button>
+    <button class="nav-btn" onclick="switchTab('other')">Other</button>
+    <button class="nav-btn" onclick="switchTab('admin')">Admin</button>
     <button class="nav-btn" onclick="switchTab('reference')">Reference</button>
   </div>
   <div class="sub-nav" id="sub-nav" style="display:none">
-    <button class="sub-nav-btn active" onclick="switchSubTab('tag-list')">Tag List</button>
-    <button class="sub-nav-btn" onclick="switchSubTab('tag-search')">Tag Search</button>
+    <button class="sub-nav-btn active" id="subnav-btn-0" onclick="switchSubTab('drafts')">Draft Recipes</button>
+    <button class="sub-nav-btn" id="subnav-btn-1" onclick="switchSubTab('xref')">Cross-ref</button>
+    <button class="sub-nav-btn" id="subnav-btn-2" onclick="switchSubTab('sidebars')">Sidebars</button>
   </div>
   <div class="search-bar" id="search-bar">
     <input type="search" id="search-input" placeholder="Search recipes..." oninput="handleSearch(this.value)">
@@ -301,7 +299,7 @@ function scaleAndFormatQty(qty, unit, scale){
 }
 
 // State
-const S = { tab:'recipes', subTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, viewingMeal:null, recipes:[], drafts:[], draftCount:0, sidebars:[], meals:[], mealTaskTypes:[], mealInstances:[], storageItems:[], storageLocations:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
+const S = { tab:'storage', subTab:'drafts', adminSubTab:'tags', tagSubTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, viewingMeal:null, recipes:[], drafts:[], draftCount:0, sidebars:[], meals:[], mealTaskTypes:[], mealInstances:[], storageItems:[], storageLocations:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
 
 async function init(){
   const [units,types,ings,recipes,tags,drafts,sidebars,meals,mealTaskTypes,storageLocations,mealInstances] = await Promise.all([
@@ -354,54 +352,13 @@ function render(){
   backBtn.style.display='none'; nav.style.display='';
   setTitle('Decent Eats');
 
-  if(S.tab==='recipes'){
-    addBtn.style.display=''; addBtn.textContent='+ Recipe';
-    addBtn.onclick=openAddRecipe;
-    searchBar.style.display='';
-    document.getElementById('search-input').placeholder='Search recipes...';
-    document.getElementById('sub-nav').style.display='none';
-    renderRecipeList();
-  } else if(S.tab==='ingredients'){
-    addBtn.style.display=''; addBtn.textContent='+ Ingredient';
-    addBtn.onclick=openAddIngredient;
-    if(importBtn) importBtn.style.display='';
-    searchBar.style.display='';
-    document.getElementById('search-input').placeholder='Search ingredients...';
-    document.getElementById('sub-nav').style.display='none';
-    renderIngredientList();
-  } else if(S.tab==='xref'){
-    addBtn.style.display='none';
-    searchBar.style.display='';
-    document.getElementById('search-input').placeholder='Search ingredients or recipes...';
-    document.getElementById('sub-nav').style.display='none';
-    if(S.xrefData) renderXrefWithUI(); else renderXref();
-  } else if(S.tab==='drafts'){
-    addBtn.style.display=''; addBtn.textContent='+ Draft';
-    addBtn.onclick=openAddDraft;
-    searchBar.style.display='';
-    document.getElementById('search-input').placeholder='Search draft recipes...';
-    document.getElementById('sub-nav').style.display='none';
-    renderDraftList();
-  } else if(S.tab==='sidebars'){
-    addBtn.style.display=''; addBtn.textContent='+ Sidebar';
-    addBtn.onclick=openAddSidebar;
-    searchBar.style.display='';
-    document.getElementById('search-input').placeholder='Search sidebars...';
-    document.getElementById('sub-nav').style.display='none';
-    renderSidebarList();
-  } else if(S.tab==='storage'){
+  if(S.tab==='storage'){
     addBtn.style.display=''; addBtn.textContent='+ Item';
     addBtn.onclick=openAddStorageItem;
     searchBar.style.display='';
     document.getElementById('search-input').placeholder='Search storage...';
     document.getElementById('sub-nav').style.display='none';
     renderStorageList();
-  } else if(S.tab==='reference'){
-    addBtn.style.display='none';
-    if(importBtn) importBtn.style.display='none';
-    searchBar.style.display='none';
-    document.getElementById('sub-nav').style.display='none';
-    renderReferenceTab();
   } else if(S.tab==='meals'){
     addBtn.style.display=''; addBtn.textContent='+ Meal';
     addBtn.onclick=openAddMeal;
@@ -409,16 +366,62 @@ function render(){
     document.getElementById('search-input').placeholder='Search meals...';
     document.getElementById('sub-nav').style.display='none';
     renderMealList();
-  } else if(S.tab==='tags'){
-    document.getElementById('sub-nav').style.display='';
-    searchBar.style.display='none';
-    addBtn.style.display='none';
-    if(S.subTab==='tag-list'){
-      addBtn.style.display=''; addBtn.textContent='+ Tag'; addBtn.onclick=openAddTag;
-      renderTagList();
-    } else {
-      renderTagSearch();
+  } else if(S.tab==='recipes'){
+    addBtn.style.display=''; addBtn.textContent='+ Recipe';
+    addBtn.onclick=openAddRecipe;
+    searchBar.style.display='';
+    document.getElementById('search-input').placeholder='Search recipes...';
+    document.getElementById('sub-nav').style.display='none';
+    renderRecipeList();
+  } else if(S.tab==='other'){
+    // Sub-nav: Draft Recipes | Cross-ref | Sidebars
+    const subNav=document.getElementById('sub-nav');
+    subNav.style.display='';
+    subNav.innerHTML=`
+      <button class="sub-nav-btn${S.subTab==='drafts'?' active':''}" onclick="switchSubTab('drafts')">Draft Recipes</button>
+      <button class="sub-nav-btn${S.subTab==='xref'?' active':''}" onclick="switchSubTab('xref')">Cross-ref</button>
+      <button class="sub-nav-btn${S.subTab==='sidebars'?' active':''}" onclick="switchSubTab('sidebars')">Sidebars</button>`;
+    if(S.subTab==='drafts'){
+      addBtn.style.display=''; addBtn.textContent='+ Draft'; addBtn.onclick=openAddDraft;
+      searchBar.style.display='';
+      document.getElementById('search-input').placeholder='Search draft recipes...';
+      renderDraftList();
+    } else if(S.subTab==='xref'){
+      addBtn.style.display='none';
+      searchBar.style.display='';
+      document.getElementById('search-input').placeholder='Search ingredients or recipes...';
+      if(S.xrefData) renderXrefWithUI(); else renderXref();
+    } else if(S.subTab==='sidebars'){
+      addBtn.style.display=''; addBtn.textContent='+ Sidebar'; addBtn.onclick=openAddSidebar;
+      searchBar.style.display='';
+      document.getElementById('search-input').placeholder='Search sidebars...';
+      renderSidebarList();
     }
+  } else if(S.tab==='admin'){
+    // Sub-nav: Tags | Ingredients
+    const subNav=document.getElementById('sub-nav');
+    subNav.style.display='';
+    subNav.innerHTML=`
+      <button class="sub-nav-btn${S.adminSubTab==='tags'?' active':''}" onclick="switchSubTab('tags')">Tags</button>
+      <button class="sub-nav-btn${S.adminSubTab==='ingredients'?' active':''}" onclick="switchSubTab('ingredients')">Ingredients</button>`;
+    if(S.adminSubTab==='tags'){
+      // Tags has its own sub-sub-nav rendered inside the content
+      addBtn.style.display=''; addBtn.textContent='+ Tag'; addBtn.onclick=openAddTag;
+      searchBar.style.display='none';
+      if(S.tagSubTab==='tag-list') renderTagList(); else renderTagSearch();
+    } else if(S.adminSubTab==='ingredients'){
+      addBtn.style.display=''; addBtn.textContent='+ Ingredient'; addBtn.onclick=openAddIngredient;
+      if(importBtn) importBtn.style.display='';
+      searchBar.style.display='';
+      document.getElementById('search-input').placeholder='Search ingredients...';
+      renderIngredientList();
+    }
+  } else if(S.tab==='reference'){
+    addBtn.style.display='none';
+    if(importBtn) importBtn.style.display='none';
+    searchBar.style.display='none';
+    document.getElementById('sub-nav').style.display='none';
+    renderReferenceTab();
   }
 }
 
@@ -558,18 +561,25 @@ function renderReferenceTab(){
 
 function openReference(){ switchTab('reference'); }
 
-function handleSearch(q){ S.searchQ=q; if(S.tab==='xref'){ renderXrefFiltered(); } else { render(); } }
+function handleSearch(q){ S.searchQ=q; if(S.tab==='other'&&S.subTab==='xref'){ renderXrefFiltered(); } else { render(); } }
 
 function switchTab(tab){
   S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.viewingMeal=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
   document.getElementById('search-input').value='';
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(tab==='recipes'&&i===0)||(tab==='ingredients'&&i===1)||(tab==='xref'&&i===2)||(tab==='tags'&&i===3)||(tab==='drafts'&&i===4)||(tab==='sidebars'&&i===5)||(tab==='meals'&&i===6)||(tab==='storage'&&i===7)||(tab==='reference'&&i===8)));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',
+    (tab==='storage'&&i===0)||(tab==='meals'&&i===1)||(tab==='recipes'&&i===2)||
+    (tab==='other'&&i===3)||(tab==='admin'&&i===4)||(tab==='reference'&&i===5)));
   render();
 }
 
 function switchSubTab(sub){
-  S.subTab=sub;
-  document.querySelectorAll('.sub-nav-btn').forEach((b,i)=>b.classList.toggle('active',(sub==='tag-list'&&i===0)||(sub==='tag-search'&&i===1)));
+  // Determine which group this sub belongs to
+  const otherSubs=['drafts','xref','sidebars'];
+  const adminSubs=['tags','ingredients'];
+  const tagSubs=['tag-list','tag-search'];
+  if(otherSubs.includes(sub)){ S.subTab=sub; }
+  else if(adminSubs.includes(sub)){ S.adminSubTab=sub; }
+  else if(tagSubs.includes(sub)){ S.tagSubTab=sub; }
   render();
 }
 
@@ -601,7 +611,7 @@ document.addEventListener('visibilitychange', async()=>{
 
 function goBack(){
   releaseWakeLock();
-  if(S.viewingSidebar){ S.viewingSidebar=null; S.tab='sidebars'; render(); return; }
+  if(S.viewingSidebar){ S.viewingSidebar=null; S.tab='other'; S.subTab='sidebars'; render(); return; }
   if(S.viewingMeal){ S.viewingMeal=null; S.tab='meals'; render(); return; }
   S.viewingRecipe=null; S.tab='recipes'; render();
 }
@@ -1010,7 +1020,7 @@ function renderSidebarList(){
   let list=S.sidebars;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(s=>s.title.toLowerCase().includes(q)); }
   if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No sidebars yet</h3><p>Add your first cooking note or essay.</p></div>'; return; }
-  c.innerHTML=list.map(s=>`<div class="recipe-card" onclick="viewSidebar('${s.id}')"><h3>${esc(s.title)}</h3><div class="meta">${fmtDate(s.created_at)}</div></div>`).join('');
+  c.innerHTML=list.map(s=>`<div class="recipe-card" onclick="viewSidebar('${s.id}')"><h3>${esc(s.title)}</h3></div>`).join('');
 }
 
 async function viewSidebar(id){
@@ -1124,7 +1134,7 @@ async function confirmDeleteSidebar(id){
   try{
     await db.del(`sidebars?id=eq.${id}`);
     S.sidebars=S.sidebars.filter(s=>s.id!==id);
-    S.viewingSidebar=null; S.tab='sidebars';
+    S.viewingSidebar=null; S.tab='other'; S.subTab='sidebars';
     toast('Sidebar deleted'); render();
   }catch(e){ toast('Error deleting'); }
 }
@@ -1206,7 +1216,8 @@ async function renderMealDetail(){
       ${mealInstancesHtml(m.id)}
       ${tagNames.length?`<div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>`:''}
       ${m.notes?`<div class="detail-section"><div class="detail-section-header"><h4>Notes</h4></div><div class="detail-section-body" style="line-height:1.7;font-size:15px">${renderMarkdown(m.notes)}</div></div>`:''}
-      <div class="detail-section"><div class="detail-section-header"><h4>Tasks</h4></div><div class="detail-section-body" style="padding:0 16px">${tasksHtml}</div></div>`;
+      <div class="detail-section"><div class="detail-section-header"><h4>Tasks</h4></div><div class="detail-section-body" style="padding:0 16px">${tasksHtml}</div></div>
+      ${await mealStorageItemsHtml(m.id)}`;
   }catch(e){ c.innerHTML=`<p>Error loading meal: ${esc(e.message)}</p>`; }
 }
 
@@ -1701,6 +1712,24 @@ async function saveStorageItem(editId){
   }catch(e){ toast('Error saving: '+e.message); }
 }
 
+async function mealStorageItemsHtml(mealId){
+  const today=localToday();
+  // find upcoming instances for this meal
+  const upcomingInstances=S.mealInstances.filter(mi=>mi.meal_id===mealId&&mi.planned_date>=today);
+  if(!upcomingInstances.length) return '';
+  // fetch storage items linked to those instances
+  const instanceIds=upcomingInstances.map(mi=>mi.id);
+  try{
+    const items=await db.get(`food_storage?meal_instance_id=in.(${instanceIds.join(',')})&select=id,quantity,ingredient_master(name),storage_locations(name),meal_instances(planned_date)`);
+    if(!items.length) return '';
+    const itemsHtml=items.map(item=>`<div class="ing-row">
+      <span style="flex:1">${esc(item.ingredient_master?.name||'?')}</span>
+      <span style="font-size:12px;color:var(--brown-light)">${item.quantity?esc(item.quantity)+' · ':''} ${esc(item.storage_locations?.name||'')}</span>
+    </div>`).join('');
+    return `<div class="detail-section"><div class="detail-section-header"><h4>Items in storage for this meal</h4></div><div class="detail-section-body" style="padding:0 16px">${itemsHtml}</div></div>`;
+  }catch(e){ return ''; }
+}
+
 function mealInstancesHtml(mealId){
   const today=localToday();
   const instances=S.mealInstances.filter(mi=>mi.meal_id===mealId).sort((a,b)=>a.planned_date.localeCompare(b.planned_date));
@@ -1817,12 +1846,15 @@ async function confirmDeleteStorageItem(id){
 
 async function renderTagList(){
   const c=document.getElementById('content');
-  // get recipe counts per tag
+  const tagToggle=`<div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="btn btn-sm btn-primary" onclick="renderTagList()">Tag List</button>
+    <button class="btn btn-sm" onclick="S.tagSubTab='tag-search';renderTagSearch()">Tag Search</button>
+  </div>`;
   const rows=await db.get('recipe_tags?select=tag_id,recipes(id)');
   const counts={};
   for(const r of rows){ counts[r.tag_id]=(counts[r.tag_id]||0)+1; }
-  if(!S.tags.length){ c.innerHTML='<div class="empty"><h3>No tags yet</h3><p>Add your first tag with the + Tag button.</p></div>'; return; }
-  c.innerHTML=`<div class="detail-section"><div style="padding:0">${S.tags.map(t=>`
+  if(!S.tags.length){ c.innerHTML=tagToggle+'<div class="empty"><h3>No tags yet</h3><p>Add your first tag with the + Tag button.</p></div>'; return; }
+  c.innerHTML=tagToggle+`<div class="detail-section"><div style="padding:0">${S.tags.map(t=>`
     <div class="tag-list-row">
       <span class="tag-chip static">${esc(t.name)}</span>
       <span class="tag-count">${counts[t.id]||0} recipe${(counts[t.id]||0)===1?'':'s'}</span>
@@ -1841,7 +1873,11 @@ async function renderTagSearch(){
     if(r.recipes)map[tag.id].recipes.push(r.recipes);
   }
   if(!Object.keys(map).length){ c.innerHTML='<div class="empty"><h3>No tagged recipes yet</h3><p>Add tags to your recipes to see them here.</p></div>'; return; }
-  c.innerHTML=Object.values(map).sort((a,b)=>b.recipes.length-a.recipes.length).map(t=>`
+  const tagToggle=`<div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="btn btn-sm" onclick="S.tagSubTab='tag-list';renderTagList()">Tag List</button>
+    <button class="btn btn-sm btn-primary" onclick="renderTagSearch()">Tag Search</button>
+  </div>`;
+  c.innerHTML=tagToggle+Object.values(map).sort((a,b)=>b.recipes.length-a.recipes.length).map(t=>`
     <div class="xref-card">
       <div class="xref-header"><span class="tag-chip static">${esc(t.name)}</span><span class="xref-shared-badge">${t.recipes.length} recipe${t.recipes.length===1?'':'s'}</span></div>
       ${t.recipes.map(r=>`<div class="xref-row" style="cursor:pointer" onclick="viewRecipe('${r.id}')""><span class="xref-recipe">${esc(r.name)}</span></div>`).join('')}
@@ -2472,7 +2508,7 @@ async function deleteDraft(id){
     S.draftCount=S.drafts.length;
     closeModal();
     toast('Draft deleted');
-    S.tab='drafts';
+    S.tab='other'; S.subTab='drafts';
     render();
   }catch(e){ toast('Error deleting draft: '+e.message); }
 }
