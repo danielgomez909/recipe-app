@@ -267,6 +267,9 @@ const db = {
 };
 
 function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Parse date strings (YYYY-MM-DD) without UTC conversion to avoid timezone shift
+function fmtDate(dateStr){ if(!dateStr)return''; const[y,m,d]=dateStr.split('-'); return new Date(y,m-1,d).toLocaleDateString(); }
+function localToday(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function setTitle(t){ document.getElementById('topbar-title').innerHTML = t + (wakeLock ? '<span class="wake-icon" title="Screen will stay on">\u{1F441}</span>' : ''); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function toFraction(d){
@@ -1007,7 +1010,7 @@ function renderSidebarList(){
   let list=S.sidebars;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(s=>s.title.toLowerCase().includes(q)); }
   if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No sidebars yet</h3><p>Add your first cooking note or essay.</p></div>'; return; }
-  c.innerHTML=list.map(s=>`<div class="recipe-card" onclick="viewSidebar('${s.id}')"><h3>${esc(s.title)}</h3><div class="meta">${new Date(s.created_at).toLocaleDateString()}</div></div>`).join('');
+  c.innerHTML=list.map(s=>`<div class="recipe-card" onclick="viewSidebar('${s.id}')"><h3>${esc(s.title)}</h3><div class="meta">${fmtDate(s.created_at)}</div></div>`).join('');
 }
 
 async function viewSidebar(id){
@@ -1150,14 +1153,14 @@ function renderMealList(){
   let list=S.meals;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(m=>m.name.toLowerCase().includes(q)); }
   if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>No meals yet</h3><p>Create your first meal plan.</p></div>'; return; }
-  const today=new Date().toISOString().split('T')[0];
+  const today=localToday();
   c.innerHTML=list.map(m=>{
     // find upcoming instance(s) for this meal
     const upcoming=S.mealInstances.filter(mi=>mi.meal_id===m.id&&mi.planned_date>=today).sort((a,b)=>a.planned_date.localeCompare(b.planned_date));
-    const instancePill=upcoming.length?`<span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:20px;margin-left:6px">🍽 ${new Date(upcoming[0].planned_date).toLocaleDateString()}</span>`:'';
+    const instancePill=upcoming.length?`<span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:20px;margin-left:6px">🍽 ${fmtDate(upcoming[0].planned_date)}</span>`:'';
     return `<div class="recipe-card" onclick="viewMeal('${m.id}')">
       <h3>${esc(m.name)}${instancePill}</h3>
-      <div class="meta">${m.last_made_date?'Last made: '+new Date(m.last_made_date).toLocaleDateString():''}</div>
+      <div class="meta">${m.last_made_date?'Last made: '+fmtDate(m.last_made_date):''}</div>
     </div>`;
   }).join('');
 }
@@ -1199,7 +1202,7 @@ async function renderMealDetail(){
         <button class="btn btn-sm" onclick="openEditMeal('${m.id}')">Edit</button>
         <button class="btn btn-sm btn-danger" onclick="confirmDeleteMeal('${m.id}')">Delete</button>
       </div>
-      ${m.last_made_date?`<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px">Last made: ${new Date(m.last_made_date).toLocaleDateString()}</div>`:''}
+      ${m.last_made_date?`<div style="font-size:12px;color:var(--brown-light);margin-bottom:10px">Last made: ${fmtDate(m.last_made_date)}</div>`:''}
       ${mealInstancesHtml(m.id)}
       ${tagNames.length?`<div class="detail-section"><div class="detail-section-header"><h4>Tags</h4></div><div class="detail-section-body">${tagsHtml}</div></div>`:''}
       ${m.notes?`<div class="detail-section"><div class="detail-section-header"><h4>Notes</h4></div><div class="detail-section-body" style="line-height:1.7;font-size:15px">${renderMarkdown(m.notes)}</div></div>`:''}
@@ -1540,8 +1543,8 @@ async function renderStorageList(){
 
 function displayStorageList(){
   const c=document.getElementById('content');
-  const today=new Date(); today.setHours(0,0,0,0);
-  const soon=new Date(today); soon.setDate(soon.getDate()+7);
+  const todayDate=new Date(); todayDate.setHours(0,0,0,0); const today=todayDate;
+  const soon=new Date(todayDate); soon.setDate(soon.getDate()+7);
   let list=S.storageItems;
   if(S.searchQ){ const q=S.searchQ.toLowerCase(); list=list.filter(i=>i.ingredient_master?.name.toLowerCase().includes(q)||(i.storage_locations?.name||'').toLowerCase().includes(q)); }
 
@@ -1558,16 +1561,16 @@ function displayStorageList(){
   const sortedLocs=[...locationOrder.filter(l=>byLoc[l]),...Object.keys(byLoc).filter(l=>!locationOrder.includes(l))];
 
   function daysDiff(dateStr){
-    const d=new Date(dateStr); d.setHours(0,0,0,0);
-    return Math.round((today-d)/(1000*60*60*24));
+    const[y,m,d]=dateStr.split('-');
+    const date=new Date(y,m-1,d);
+    return Math.round((todayDate-date)/(1000*60*60*24));
   }
 
   c.innerHTML=sortedLocs.map(loc=>{
     const items=byLoc[loc];
     const itemsHtml=items.map(item=>{
-      const exp=item.expiration_date?new Date(item.expiration_date):null;
-      if(exp) exp.setHours(0,0,0,0);
-      const isExpired=exp&&exp<today;
+      const exp=item.expiration_date?(()=>{const[y,m,d]=item.expiration_date.split('-');return new Date(y,m-1,d);})():null;
+      const isExpired=exp&&exp<todayDate;
       const isSoon=exp&&!isExpired&&exp<=soon;
       const expBadge=isExpired?`<span style="font-size:11px;background:#dc3545;color:white;padding:2px 6px;border-radius:4px;margin-left:6px">expired</span>`:
         isSoon?`<span style="font-size:11px;background:#fd7e14;color:white;padding:2px 6px;border-radius:4px;margin-left:6px">expires soon</span>`:'';
@@ -1584,9 +1587,9 @@ function displayStorageList(){
         parts.push(`<span style="color:#1a6fa8">${days===0?'frozen today':days===1?'frozen 1 day':`frozen ${days} days`}</span>`);
       }
 
-      // Meal instance pill
-      const mi=item.meal_instances;
-      const mealPill=mi?`<span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">🍽 ${esc(mi.meals?.name||'Meal')} · ${new Date(mi.planned_date).toLocaleDateString()}</span>`:'';
+      // Meal instance pill - use nested join data or fall back to S.mealInstances lookup
+      const mi=item.meal_instances||(item.meal_instance_id?S.mealInstances.find(x=>x.id===item.meal_instance_id):null);
+      const mealPill=mi?`<span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">🍽 ${esc(mi.meals?.name||'Meal')} · ${fmtDate(mi.planned_date)}</span>`:'';
 
       return `<div class="ing-master-row" style="cursor:pointer;align-items:flex-start;padding:10px 16px" onclick="openEditStorageItem('${item.id}')">
         <div style="flex:1">
@@ -1607,8 +1610,8 @@ function storageModalHtml(item){
   const ingName=item?.ingredient_master?.name||'';
   const ingId=item?.ingredient_master?.id||'';
   // Meal instance selector - show upcoming/recent instances
-  const today=new Date().toISOString().split('T')[0];
-  const miOptions=S.mealInstances.map(mi=>`<option value="${mi.id}"${item?.meal_instance_id===mi.id?' selected':''}>${esc(mi.meals?.name||'?')} · ${new Date(mi.planned_date).toLocaleDateString()}</option>`).join('');
+  const today=localToday();
+  const miOptions=S.mealInstances.map(mi=>`<option value="${mi.id}"${item?.meal_instance_id===mi.id?' selected':''}>${esc(mi.meals?.name||'?')} · ${fmtDate(mi.planned_date)}</option>`).join('');
   return `
     <div class="field"><label>Ingredient</label>
       <div class="ing-search-wrap" style="position:relative">
@@ -1699,18 +1702,18 @@ async function saveStorageItem(editId){
 }
 
 function mealInstancesHtml(mealId){
-  const today=new Date().toISOString().split('T')[0];
+  const today=localToday();
   const instances=S.mealInstances.filter(mi=>mi.meal_id===mealId).sort((a,b)=>a.planned_date.localeCompare(b.planned_date));
   if(!instances.length) return `<div style="margin-bottom:10px"><button class="add-link" onclick="openAddMealInstance('${mealId}')">+ plan a date</button></div>`;
   const pills=instances.map(mi=>{
     const isPast=mi.planned_date<today;
-    return `<span style="font-size:12px;background:${isPast?'var(--cream2)':'var(--green-light)'};color:${isPast?'var(--brown-light)':'var(--green)'};padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px">&#127869; ${new Date(mi.planned_date).toLocaleDateString()}<button onclick="confirmDeleteMealInstance('${mi.id}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1">&#10005;</button></span>`;
+    return `<span style="font-size:12px;background:${isPast?'var(--cream2)':'var(--green-light)'};color:${isPast?'var(--brown-light)':'var(--green)'};padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px">&#127869; ${fmtDate(mi.planned_date)}<button onclick="confirmDeleteMealInstance('${mi.id}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1">&#10005;</button></span>`;
   }).join('');
   return `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">${pills}<button class="add-link" onclick="openAddMealInstance('${mealId}')">+ plan a date</button></div>`;
 }
 
 function openAddMealInstance(mealId){
-  const todayStr=new Date().toISOString().split('T')[0];
+  const todayStr=localToday();
   openModal(`
     <div class="modal-header"><div class="modal-title">Plan a date</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
@@ -1747,7 +1750,7 @@ async function confirmDeleteMealInstance(id){
 }
 function openQuickAddMealInstance(){
   const mealOptions=S.meals.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
-  const todayStr=new Date().toISOString().split('T')[0];
+  const todayStr=localToday();
   openModal(`
     <div class="modal-header"><div class="modal-title">Plan a meal</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">&#10005;</button></div>
     <div class="modal-body">
