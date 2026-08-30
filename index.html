@@ -1714,20 +1714,63 @@ async function saveStorageItem(editId){
 
 async function mealStorageItemsHtml(mealId){
   const today=localToday();
-  // find upcoming instances for this meal
-  const upcomingInstances=S.mealInstances.filter(mi=>mi.meal_id===mealId&&mi.planned_date>=today);
-  if(!upcomingInstances.length) return '';
-  // fetch storage items linked to those instances
-  const instanceIds=upcomingInstances.map(mi=>mi.id);
+  const upcomingInstance=S.mealInstances.find(mi=>mi.meal_id===mealId&&mi.planned_date>=today);
+  if(!upcomingInstance) return '';
+  const instanceId=upcomingInstance.id;
   try{
-    const items=await db.get(`food_storage?meal_instance_id=in.(${instanceIds.join(',')})&select=id,quantity,ingredient_master(name),storage_locations(name),meal_instances(planned_date)`);
-    if(!items.length) return '';
-    const itemsHtml=items.map(item=>`<div class="ing-row">
-      <span style="flex:1">${esc(item.ingredient_master?.name||'?')}</span>
-      <span style="font-size:12px;color:var(--brown-light)">${item.quantity?esc(item.quantity)+' · ':''} ${esc(item.storage_locations?.name||'')}</span>
-    </div>`).join('');
-    return `<div class="detail-section"><div class="detail-section-header"><h4>Items in storage for this meal</h4></div><div class="detail-section-body" style="padding:0 16px">${itemsHtml}</div></div>`;
+    // All storage items NOT linked to this instance (unlinked or linked to another)
+    const [linked, allOthers] = await Promise.all([
+      db.get(`food_storage?meal_instance_id=eq.${instanceId}&select=id,quantity,ingredient_master(id,name),storage_locations(name)`),
+      db.get(`food_storage?meal_instance_id=neq.${instanceId}&select=id,quantity,ingredient_master(id,name),storage_locations(name)`),
+    ]);
+    const nullLinked = await db.get(`food_storage?meal_instance_id=is.null&select=id,quantity,ingredient_master(id,name),storage_locations(name)`);
+    const available = [...allOthers, ...nullLinked];
+    const linkedHtml=linked.length ? linked.map(item=>`
+      <div class="ing-row" style="align-items:center">
+        <span style="flex:1">${esc(item.ingredient_master?.name||'?')}</span>
+        <span style="font-size:12px;color:var(--brown-light);margin-right:8px">${item.quantity?esc(item.quantity)+' · ':''} ${esc(item.storage_locations?.name||'')}</span>
+        <button onclick="unlinkStorageFromMeal('${item.id}')" style="background:none;border:none;cursor:pointer;color:var(--brown-light);font-size:14px;padding:0">✕</button>
+      </div>`).join('') : '<div style="font-size:13px;color:var(--brown-light);padding:8px 0">No items linked yet.</div>';
+
+    // Available items dropdown
+    const avail=available.filter(i=>i.ingredient_master);
+    const availOptions=avail.map(i=>`<option value="${i.id}">${esc(i.ingredient_master.name)}${i.quantity?' ('+esc(i.quantity)+')':''} — ${esc(i.storage_locations?.name||'?')}</option>`).join('');
+    const addRow=avail.length?`
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <select id="ms-avail-${instanceId}" style="flex:1;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
+          <option value="">— select a storage item to add —</option>${availOptions}
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="linkStorageToMeal('${instanceId}')">Add</button>
+      </div>`:'';
+
+    return `<div class="detail-section">
+      <div class="detail-section-header"><h4>Storage items for ${fmtDate(upcomingInstance.planned_date)}</h4></div>
+      <div class="detail-section-body" style="padding:0 16px">
+        ${linkedHtml}
+        ${addRow}
+      </div>
+    </div>`;
   }catch(e){ return ''; }
+}
+
+async function linkStorageToMeal(instanceId){
+  const sel=document.getElementById(`ms-avail-${instanceId}`);
+  const itemId=sel?.value;
+  if(!itemId){ toast('Select an item first'); return; }
+  try{
+    await db.patch(`food_storage?id=eq.${itemId}`,{meal_instance_id:instanceId});
+    toast('Item linked');
+    // Refresh the meal detail
+    renderMealDetail();
+  }catch(e){ toast('Error linking: '+e.message); }
+}
+
+async function unlinkStorageFromMeal(itemId){
+  try{
+    await db.patch(`food_storage?id=eq.${itemId}`,{meal_instance_id:null});
+    toast('Item removed from meal');
+    renderMealDetail();
+  }catch(e){ toast('Error removing: '+e.message); }
 }
 
 function mealInstancesHtml(mealId){
