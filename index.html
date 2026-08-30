@@ -1721,9 +1721,9 @@ async function mealStorageItemsHtml(mealId){
     // All storage items NOT linked to this instance (unlinked or linked to another)
     const [linked, allOthers] = await Promise.all([
       db.get(`food_storage?meal_instance_id=eq.${instanceId}&select=id,quantity,ingredient_master(id,name),storage_locations(name)`),
-      db.get(`food_storage?meal_instance_id=neq.${instanceId}&select=id,quantity,ingredient_master(id,name),storage_locations(name)`),
+      db.get(`food_storage?meal_instance_id=neq.${instanceId}&select=id,quantity,meal_instance_id,ingredient_master(id,name),storage_locations(name),meal_instances(id,planned_date,meals(name))`),
     ]);
-    const nullLinked = await db.get(`food_storage?meal_instance_id=is.null&select=id,quantity,ingredient_master(id,name),storage_locations(name)`);
+    const nullLinked = await db.get(`food_storage?meal_instance_id=is.null&select=id,quantity,meal_instance_id,ingredient_master(id,name),storage_locations(name),meal_instances(id,planned_date,meals(name))`);
     const available = [...allOthers, ...nullLinked];
     const linkedHtml=linked.length ? linked.map(item=>`
       <div class="ing-row" style="align-items:center">
@@ -1734,7 +1734,11 @@ async function mealStorageItemsHtml(mealId){
 
     // Available items dropdown
     const avail=available.filter(i=>i.ingredient_master);
-    const availOptions=avail.map(i=>`<option value="${i.id}">${esc(i.ingredient_master.name)}${i.quantity?' ('+esc(i.quantity)+')':''} — ${esc(i.storage_locations?.name||'?')}</option>`).join('');
+    const availOptions=avail.map(i=>{
+      const otherMI=i.meal_instances;
+      const otherLabel=otherMI?` ⚠ linked to ${esc(otherMI.meals?.name||'another meal')} ${fmtDate(otherMI.planned_date)}`:'';
+      return `<option value="${i.id}">${esc(i.ingredient_master.name)}${i.quantity?' ('+esc(i.quantity)+')':''} — ${esc(i.storage_locations?.name||'?')}${otherLabel}</option>`;
+    }).join('');
     const addRow=avail.length?`
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
         <select id="ms-avail-${instanceId}" style="flex:1;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
