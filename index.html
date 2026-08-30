@@ -554,7 +554,36 @@ function renderReferenceTab(){
     <div class="ref-version-row"><span class="ref-version-date">July 2026</span><span class="ref-version-desc">Meals tab — meal_tasks schema (recipe/ingredient/task types), cook-a-meal checklist expanding recipes inline, up/down block reordering, visual distinction by task type.</span></div>
     <div class="ref-version-row"><span class="ref-version-date">July 2026</span><span class="ref-version-desc">Food Storage tab — food_storage + storage_locations schema. Grouped by location, expiration badges.</span></div>
     <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Edit ingredients in master list. Bulk ingredient CSV import with template download (blank + with-existing), duplicate detection, type update support, proper quoted CSV parsing.</span></div>
-    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Reference doc moved inline — embedded as Reference nav tab in index.html (iPad-safe, no new-tab navigation trap).</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Reference doc moved inline — embedded as Reference nav tab in index.html (iPad-safe). decent-eats-reference.html removed from repo.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Meal instances (meal_instances table) — plan a meal for a specific date. Planned date pills shown on meal list and detail. Storage items can be linked to a meal instance (reassigns meal_instance_id). Storage detail shows age since purchase, age frozen (date_frozen field), and linked meal pill. UTC timezone bug fixed across all date fields using fmtDate() and localToday() helpers.</span></div>
+    <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Tab restructure — Storage | Meals | Recipes | Other (Draft Recipes, Cross-ref, Sidebars) | Admin (Tags, Ingredients) | Reference. Sidebar invalid date bug fixed. Meal detail shows storage items linked to upcoming instance with add/remove capability and ⚠ indicator for items already linked to another meal.</span></div>
+  </div>
+
+  <h2>Additional Schema — meal_instances + food_storage additions</h2>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">meal_instances</span><span class="ref-schema-desc">A planned occurrence of a saved meal on a specific date</span></div>
+    <div class="ref-schema-row"><span class="ref-col">id <span class="ref-badge ref-pk">PK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Auto-generated</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">References meals.id — cascades on delete</span></div>
+    <div class="ref-schema-row"><span class="ref-col">planned_date</span><span class="ref-type">date</span><span class="ref-desc">Required — the date you plan to make this meal</span></div>
+    <div class="ref-schema-row"><span class="ref-col">notes</span><span class="ref-type">text</span><span class="ref-desc">Optional instance-specific notes</span></div>
+    <div class="ref-schema-row"><span class="ref-col">created_at</span><span class="ref-type">timestamptz</span><span class="ref-desc">Auto-set on insert</span></div>
+  </div>
+
+  <div class="ref-schema">
+    <div class="ref-schema-header"><span class="ref-schema-name">food_storage (additional columns)</span><span class="ref-schema-desc">Added for meal planning and freezer tracking</span></div>
+    <div class="ref-schema-row"><span class="ref-col">meal_instance_id <span class="ref-badge ref-fk">FK</span></span><span class="ref-type">uuid</span><span class="ref-desc">Nullable — links this storage item to a planned meal instance. Set to null on delete.</span></div>
+    <div class="ref-schema-row"><span class="ref-col">date_frozen</span><span class="ref-type">date</span><span class="ref-desc">Nullable — when the item went into storage/freezer. Displays "frozen X days" in storage list.</span></div>
+  </div>
+
+  <h2>Feature Backlog</h2>
+  <div class="ref-backlog">
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Clicking a tag on recipe detail navigates to Tag Search filtered to that tag</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Manual unit override for scaled recipes — user picks display unit manually</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Equipment field — needs schema design (equipment_master ref table + junction, not free text)</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Food storage "What can I make?" — cross-reference inventory against recipes. Design TBD.</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Security</span>Supabase RLS — lower priority now that passphrase auth is in place</div>
+    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Data</span>General-purpose bulk recipe template loader</div>
   </div>
 </div>`;
 }
