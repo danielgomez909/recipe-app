@@ -1247,6 +1247,8 @@ async function renderMealDetail(){
       ${m.notes?`<div class="detail-section"><div class="detail-section-header"><h4>Notes</h4></div><div class="detail-section-body" style="line-height:1.7;font-size:15px">${renderMarkdown(m.notes)}</div></div>`:''}
       <div class="detail-section"><div class="detail-section-header"><h4>Tasks</h4></div><div class="detail-section-body" style="padding:0 16px">${tasksHtml}</div></div>
       ${await mealStorageItemsHtml(m.id)}`;
+    // Populate the storage dropdown after render
+    if(window._mealInstanceId) setTimeout(()=>filterMealStorageItems(window._mealInstanceId),0);
   }catch(e){ c.innerHTML=`<p>Error loading meal: ${esc(e.message)}</p>`; }
 }
 
@@ -1665,11 +1667,26 @@ function storageModalHtml(item){
       <div class="field"><label>Location</label><select id="st-loc"><option value="">— select —</option>${locOptions}</select></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Purchase date</label><input type="date" id="st-purchase" value="${esc(item?.purchase_date||'')}"></div>
-      <div class="field"><label>Date frozen</label><input type="date" id="st-frozen" value="${esc(item?.date_frozen||'')}"></div>
+      <div class="field"><label>Purchase date</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="st-purchase" value="${esc(item?.purchase_date||'')}" style="flex:1">
+          <button type="button" onclick="document.getElementById('st-purchase').value=''" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0">✕</button>
+        </div>
+      </div>
+      <div class="field"><label>Date frozen</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="st-frozen" value="${esc(item?.date_frozen||'')}" style="flex:1">
+          <button type="button" onclick="document.getElementById('st-frozen').value=''" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0">✕</button>
+        </div>
+      </div>
     </div>
     <div class="row2">
-      <div class="field"><label>Expiration date</label><input type="date" id="st-exp" value="${esc(item?.expiration_date||'')}"></div>
+      <div class="field"><label>Expiration date</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="st-exp" value="${esc(item?.expiration_date||'')}" style="flex:1">
+          <button type="button" onclick="document.getElementById('st-exp').value=''" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0">✕</button>
+        </div>
+      </div>
       <div class="field"></div>
     </div>
     <div class="field"><label>Planned meal <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
@@ -1761,19 +1778,29 @@ async function mealStorageItemsHtml(mealId){
         <button onclick="unlinkStorageFromMeal('${item.id}')" style="background:none;border:none;cursor:pointer;color:var(--brown-light);font-size:14px;padding:0">✕</button>
       </div>`).join('') : '<div style="font-size:13px;color:var(--brown-light);padding:8px 0">No items linked yet.</div>';
 
-    // Available items dropdown
-    const avail=available.filter(i=>i.ingredient_master);
-    const availOptions=avail.map(i=>{
-      const otherMI=i.meal_instances;
-      const otherLabel=otherMI?` ⚠ linked to ${esc(otherMI.meals?.name||'another meal')} ${fmtDate(otherMI.planned_date)}`:'';
-      return `<option value="${i.id}">${esc(i.ingredient_master.name)}${i.quantity?' ('+esc(i.quantity)+')':''} — ${esc(i.storage_locations?.name||'?')}${otherLabel}</option>`;
-    }).join('');
-    const addRow=avail.length?`
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <select id="ms-avail-${instanceId}" style="flex:1;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
-          <option value="">— select a storage item to add —</option>${availOptions}
-        </select>
-        <button class="btn btn-sm btn-primary" onclick="linkStorageToMeal('${instanceId}')">Add</button>
+    // Available items — store on window for filtering
+    window._mealAvailItems = available.filter(i=>i.ingredient_master);
+    window._mealInstanceId = instanceId;
+
+    const locationOptions=[...new Set(available.filter(i=>i.storage_locations?.name).map(i=>i.storage_locations.name))].sort()
+      .map(l=>`<option value="${l}">${esc(l)}</option>`).join('');
+
+    const addRow=window._mealAvailItems.length?`
+      <div style="margin-top:10px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input id="ms-search-${instanceId}" type="search" placeholder="Search ingredient..." oninput="filterMealStorageItems('${instanceId}')"
+            style="flex:1;padding:6px 10px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none">
+          <select id="ms-loc-${instanceId}" onchange="filterMealStorageItems('${instanceId}')"
+            style="padding:6px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
+            <option value="">All locations</option>${locationOptions}
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="ms-avail-${instanceId}" style="flex:1;padding:7px 8px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:white;color:var(--brown);outline:none;appearance:none">
+            <option value="">— select a storage item to add —</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="linkStorageToMeal('${instanceId}')">Add</button>
+        </div>
       </div>`:'';
 
     return `<div class="detail-section">
@@ -1784,6 +1811,24 @@ async function mealStorageItemsHtml(mealId){
       </div>
     </div>`;
   }catch(e){ return ''; }
+}
+
+function filterMealStorageItems(instanceId){
+  const q=(document.getElementById(`ms-search-${instanceId}`)?.value||'').toLowerCase();
+  const loc=(document.getElementById(`ms-loc-${instanceId}`)?.value||'').toLowerCase();
+  const sel=document.getElementById(`ms-avail-${instanceId}`);
+  if(!sel) return;
+  const filtered=(window._mealAvailItems||[]).filter(i=>{
+    const name=(i.ingredient_master?.name||'').toLowerCase();
+    const iloc=(i.storage_locations?.name||'').toLowerCase();
+    return (!q||name.includes(q)) && (!loc||iloc===loc);
+  });
+  const opts=filtered.map(i=>{
+    const otherMI=i.meal_instances;
+    const otherLabel=otherMI?` ⚠ linked to ${esc(otherMI.meals?.name||'another meal')} ${fmtDate(otherMI.planned_date)}`:'';
+    return `<option value="${i.id}">${esc(i.ingredient_master.name)}${i.quantity?' ('+esc(i.quantity)+')':''} — ${esc(i.storage_locations?.name||'?')}${otherLabel}</option>`;
+  }).join('');
+  sel.innerHTML=`<option value="">— select a storage item to add —</option>${opts}`;
 }
 
 async function linkStorageToMeal(instanceId){
@@ -2030,7 +2075,7 @@ function renderDetailIngredientsAndRest(r){
   const sourceHtml=r.source?(r.source.startsWith('http')?`<a href="${esc(r.source)}" target="_blank" style="color:var(--accent);font-size:14px;word-break:break-all">${esc(r.source)}</a>`:`<span style="font-size:14px">${esc(r.source)}</span>`):'<span style="font-size:13px;color:var(--brown-light)">—</span>';
   const tagNames=recipeTags.map(rt=>S.tags.find(t=>t.id===rt.tag_id)).filter(Boolean);
   const tagsHtml=tagNames.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${tagNames.map(t=>`<span class="tag-chip static">${esc(t.name)}</span>`).join('')}</div>`:'<div style="font-size:13px;color:var(--brown-light)">No tags.</div>';
-  const scaleOptions=[1,2,3,4,5,8,10].map(n=>`<option value="${n}"${n===scale?' selected':''}>${n}x</option>`).join('');
+  const scaleOptions=[1,2,3,4,5,8,10,15,20].map(n=>`<option value="${n}"${n===scale?' selected':''}>${n}x</option>`).join('');
   c.innerHTML=`
     <div class="detail-actions">
       <button class="btn btn-sm btn-primary" onclick="openChecklist()">▶ Cook this recipe</button>
