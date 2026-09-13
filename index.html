@@ -1849,17 +1849,19 @@ function mealInstancesHtml(mealId){
   if(!instances.length) return `<div style="margin-bottom:10px"><button class="add-link" onclick="openAddMealInstance('${mealId}')">+ plan a date</button></div>`;
   const pills=instances.map(mi=>{
     const isPast=mi.planned_date<today;
-    return `<span style="font-size:12px;background:${isPast?'var(--cream2)':'var(--green-light)'};color:${isPast?'var(--brown-light)':'var(--green)'};padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px">&#127869; ${fmtDate(mi.planned_date)}<button onclick="openEditMealInstance('${mi.id}','${mi.planned_date}',${JSON.stringify(mi.notes||'')})" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1" title="Edit">✏</button><button onclick="confirmDeleteMealInstance('${mi.id}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1">&#10005;</button></span>`;
+    return `<span style="font-size:12px;background:${isPast?'var(--cream2)':'var(--green-light)'};color:${isPast?'var(--brown-light)':'var(--green)'};padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px">&#127869; ${fmtDate(mi.planned_date)}<button onclick="openEditMealInstance('${mi.id}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1" title="Edit">✏</button><button onclick="confirmDeleteMealInstance('${mi.id}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0;line-height:1">&#10005;</button></span>`;
   }).join('');
   return `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">${pills}<button class="add-link" onclick="openAddMealInstance('${mealId}')">+ plan a date</button></div>`;
 }
 
-function openEditMealInstance(id, currentDate, currentNotes){
+function openEditMealInstance(id){
+  const mi=S.mealInstances.find(x=>x.id===id);
+  if(!mi){ toast('Instance not found'); return; }
   openModal(`
     <div class="modal-header"><div class="modal-title">Edit planned date</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      <div class="field"><label>Planned date</label><input type="date" id="emi-date" value="${esc(currentDate)}"></div>
-      <div class="field"><label>Notes</label><textarea id="emi-notes" placeholder="Optional...">${esc(currentNotes||'')}</textarea></div>
+      <div class="field"><label>Planned date</label><input type="date" id="emi-date" value="${esc(mi.planned_date)}"></div>
+      <div class="field"><label>Notes</label><textarea id="emi-notes" placeholder="Optional...">${esc(mi.notes||'')}</textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
