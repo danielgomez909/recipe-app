@@ -1562,7 +1562,7 @@ async function renderStorageList(){
   const c=document.getElementById('content');
   c.innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
   try{
-    S.storageItems=await db.get('food_storage?order=expiration_date,created_at&select=id,quantity,purchase_date,expiration_date,date_frozen,meal_instance_id,notes,ingredient_master(id,name),storage_locations(id,name),meal_instances(id,planned_date,meals(id,name))');
+    S.storageItems=await db.get('food_storage?disposition=is.null&order=expiration_date,created_at&select=id,quantity,purchase_date,expiration_date,date_frozen,meal_instance_id,notes,ingredient_master(id,name),storage_locations(id,name),meal_instances(id,planned_date,meals(id,name))');
     displayStorageList();
   }catch(e){ c.innerHTML=`<p>Error loading storage: ${esc(e.message)}</p>`; }
 }
@@ -1623,7 +1623,10 @@ function displayStorageList(){
           ${parts.length?`<div style="font-size:12px;margin-top:2px">${parts.join(' · ')}</div>`:''}
           ${mealPill}
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();confirmDeleteStorageItem('${item.id}')" style="padding:3px 8px;font-size:11px">✕</button>
+        <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px" onclick="event.stopPropagation()">
+          <button onclick="disposeStorageItem('${item.id}','used')" title="Mark as used" style="background:var(--green-light);border:1px solid rgba(74,103,65,0.3);color:var(--green);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer">✓ Used</button>
+          <button onclick="disposeStorageItem('${item.id}','discarded')" title="Mark as discarded" style="background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown-light);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer">✕ Discard</button>
+        </div>
       </div>`;
     }).join('');
     return `<div class="section-label" style="text-transform:capitalize">${esc(loc)}</div>
@@ -1677,7 +1680,12 @@ function storageModalHtml(item){
       <select id="st-mi"><option value="">— none —</option>${miOptions}</select>
       <button class="add-link" style="margin-top:6px" onclick="openQuickAddMealInstance()">+ plan a new meal date</button>
     </div>
-    <div class="field"><label>Notes</label><textarea id="st-notes" placeholder="Optional notes...">${esc(item?.notes||'')}</textarea></div>`;
+    <div class="field"><label>Notes</label><textarea id="st-notes" placeholder="Optional notes...">${esc(item?.notes||'')}</textarea></div>
+    ${item?.id?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;display:flex;gap:8px">
+      <button onclick="disposeStorageItem('${item.id}','used');closeModal()" style="flex:1;background:var(--green-light);border:1px solid rgba(74,103,65,0.3);color:var(--green);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✓ Mark as used</button>
+      <button onclick="disposeStorageItem('${item.id}','discarded');closeModal()" style="flex:1;background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown-light);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✕ Mark as discarded</button>
+    </div>`:''}`;
+
 }
 
 function handleStorageIngSearch(val){
@@ -1937,6 +1945,15 @@ async function saveQuickMealInstance(){
     // Just refresh storage list and notify
     renderStorageList();
     toast('Meal planned — now re-open the storage item to link it');
+  }catch(e){ toast('Error: '+e.message); }
+}
+
+async function disposeStorageItem(id, disposition){
+  try{
+    await db.patch(`food_storage?id=eq.${id}`,{disposition, disposition_date:localToday()});
+    S.storageItems=S.storageItems.filter(i=>i.id!==id);
+    toast(disposition==='used'?'Marked as used':'Marked as discarded');
+    displayStorageList();
   }catch(e){ toast('Error: '+e.message); }
 }
 
