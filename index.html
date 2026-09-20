@@ -199,6 +199,13 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 .ref-step { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .ref-step:last-child { border-bottom: none; }
 .ref-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+/* Storage multi-select */
+.storage-checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); flex-shrink: 0; margin-top: 1px; margin-right: 10px; display: flex; align-items: center; justify-content: center; transition: all .15s; font-size: 12px; color: white; background: white; }
+.storage-checkbox.checked { background: var(--green); border-color: var(--green); }
+.storage-row.selected { background: var(--green-light); }
+.storage-commit-bar { position: fixed; left: 0; right: 0; bottom: 0; max-width: 680px; margin: 0 auto; background: white; border-top: 1px solid var(--border-strong); box-shadow: 0 -2px 12px rgba(61,43,31,0.1); padding: 10px 16px; display: flex; align-items: center; gap: 8px; z-index: 90; }
+.storage-commit-bar span { flex: 1; font-size: 13px; color: var(--brown-light); }
+.content.commit-bar-open { padding-bottom: 64px; }
 </style>
 </head>
 <body>
@@ -244,6 +251,12 @@ html, body { height: 100%; background: var(--cream); color: var(--brown); font-f
 <div id="modal-root"></div>
 <div id="checklist-root"></div>
 <div class="toast" id="toast"></div>
+<div class="storage-commit-bar" id="storage-commit-bar" style="display:none">
+  <span id="storage-commit-count"></span>
+  <button class="btn btn-sm btn-ghost" onclick="clearStorageSelection()">Cancel</button>
+  <button class="btn btn-sm" style="background:var(--green-light);color:var(--green);border-color:rgba(74,103,65,0.3)" onclick="commitStorageDisposition('used')">✓ Mark Used</button>
+  <button class="btn btn-sm" style="background:var(--cream2);color:var(--brown-light)" onclick="commitStorageDisposition('discarded')">✕ Discard</button>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://ntrhptxetvdjhoqfaytl.supabase.co';
@@ -299,7 +312,7 @@ function scaleAndFormatQty(qty, unit, scale){
 }
 
 // State
-const S = { tab:'storage', subTab:'drafts', adminSubTab:'tags', tagSubTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, viewingMeal:null, recipes:[], drafts:[], draftCount:0, sidebars:[], meals:[], mealTaskTypes:[], mealInstances:[], storageItems:[], storageLocations:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1 };
+const S = { tab:'storage', subTab:'drafts', adminSubTab:'tags', tagSubTab:'tag-list', viewingRecipe:null, viewingDraft:null, viewingSidebar:null, viewingMeal:null, recipes:[], drafts:[], draftCount:0, sidebars:[], meals:[], mealTaskTypes:[], mealInstances:[], storageItems:[], storageLocations:[], units:[], types:[], ingredients:[], tags:[], searchQ:'', compoundQ:'', currentScale:1, storageSelected:new Set(), storageCollapsed:new Set() };
 
 async function init(){
   const [units,types,ings,recipes,tags,drafts,sidebars,meals,mealTaskTypes,storageLocations,mealInstances] = await Promise.all([
@@ -578,6 +591,7 @@ function handleSearch(q){ S.searchQ=q; if(S.tab==='other'&&S.subTab==='xref'){ r
 
 function switchTab(tab){
   S.tab=tab; S.viewingRecipe=null; S.viewingDraft=null; S.viewingSidebar=null; S.viewingMeal=null; S.searchQ=''; S.compoundQ=''; releaseWakeLock();
+  S.storageSelected.clear(); updateStorageCommitBar();
   document.getElementById('search-input').value='';
   document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',
     (tab==='storage'&&i===0)||(tab==='meals'&&i===1)||(tab==='recipes'&&i===2)||
@@ -1581,7 +1595,7 @@ function displayStorageList(){
     byLoc[loc].push(item);
   }
 
-  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>Nothing in storage</h3><p>Add items with the + Item button.</p></div>'; return; }
+  if(!list.length){ c.innerHTML=S.searchQ?'<div class="empty"><h3>No results</h3><p>Try a different search.</p></div>':'<div class="empty"><h3>Nothing in storage</h3><p>Add items with the + Item button.</p></div>'; updateStorageCommitBar(); return; }
 
   const locationOrder=['fridge','freezer','pantry','counter'];
   const sortedLocs=[...locationOrder.filter(l=>byLoc[l]),...Object.keys(byLoc).filter(l=>!locationOrder.includes(l))];
@@ -1617,21 +1631,57 @@ function displayStorageList(){
       const mi=item.meal_instances||(item.meal_instance_id?S.mealInstances.find(x=>x.id===item.meal_instance_id):null);
       const mealPill=mi?`<span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">🍽 ${esc(mi.meals?.name||'Meal')} · ${fmtDate(mi.planned_date)}</span>`:'';
 
-      return `<div class="ing-master-row" style="cursor:pointer;align-items:flex-start;padding:10px 16px" onclick="openEditStorageItem('${item.id}')">
+      const isSelected=S.storageSelected.has(item.id);
+      return `<div class="ing-master-row storage-row${isSelected?' selected':''}" style="cursor:pointer;align-items:flex-start;padding:10px 16px" onclick="openEditStorageItem('${item.id}')">
+        <div class="storage-checkbox${isSelected?' checked':''}" onclick="event.stopPropagation();toggleStorageSelect('${item.id}')">${isSelected?'✓':''}</div>
         <div style="flex:1">
           <div style="font-size:14px">${esc(item.ingredient_master?.name||'?')}${expBadge}</div>
           ${parts.length?`<div style="font-size:12px;margin-top:2px">${parts.join(' · ')}</div>`:''}
           ${mealPill}
-        </div>
-        <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px" onclick="event.stopPropagation()">
-          <button onclick="disposeStorageItem('${item.id}','used')" title="Mark as used" style="background:var(--green-light);border:1px solid rgba(74,103,65,0.3);color:var(--green);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer">✓ Used</button>
-          <button onclick="disposeStorageItem('${item.id}','discarded')" title="Mark as discarded" style="background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown-light);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer">✕ Discard</button>
         </div>
       </div>`;
     }).join('');
     return `<div class="section-label" style="text-transform:capitalize">${esc(loc)}</div>
       <div class="detail-section" style="margin-bottom:14px"><div style="padding:0">${itemsHtml}</div></div>`;
   }).join('');
+  updateStorageCommitBar();
+}
+
+function toggleStorageSelect(id){
+  if(S.storageSelected.has(id)) S.storageSelected.delete(id); else S.storageSelected.add(id);
+  displayStorageList();
+}
+
+function clearStorageSelection(){
+  S.storageSelected.clear();
+  displayStorageList();
+}
+
+function updateStorageCommitBar(){
+  const bar=document.getElementById('storage-commit-bar');
+  const content=document.getElementById('content');
+  if(!bar) return;
+  const n=S.storageSelected.size;
+  if(S.tab==='storage' && n>0){
+    bar.style.display='flex';
+    document.getElementById('storage-commit-count').textContent=`${n} selected`;
+    if(content) content.classList.add('commit-bar-open');
+  } else {
+    bar.style.display='none';
+    if(content) content.classList.remove('commit-bar-open');
+  }
+}
+
+async function commitStorageDisposition(disposition){
+  const ids=[...S.storageSelected];
+  if(!ids.length) return;
+  try{
+    await db.patch(`food_storage?id=in.(${ids.join(',')})`,{disposition, disposition_date:localToday()});
+    S.storageItems=S.storageItems.filter(i=>!S.storageSelected.has(i.id));
+    S.storageSelected.clear();
+    toast(disposition==='used'?`Marked ${ids.length} as used`:`Discarded ${ids.length}`);
+    displayStorageList();
+  }catch(e){ toast('Error: '+e.message); }
 }
 
 function storageModalHtml(item){
