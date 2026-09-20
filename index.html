@@ -1641,10 +1641,20 @@ function displayStorageList(){
         </div>
       </div>`;
     }).join('');
-    return `<div class="section-label" style="text-transform:capitalize">${esc(loc)}</div>
-      <div class="detail-section" style="margin-bottom:14px"><div style="padding:0">${itemsHtml}</div></div>`;
+    const isCollapsed=S.storageCollapsed.has(loc);
+    return `<div class="section-label" style="text-transform:capitalize;cursor:pointer;display:flex;align-items:center;gap:6px" onclick="toggleStorageCategory('${loc}')">
+      <span style="display:inline-block;font-size:10px;transition:transform .15s;transform:rotate(${isCollapsed?'-90deg':'0deg'})">▾</span>
+      <span>${esc(loc)}</span>
+      <span style="margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0;color:var(--brown-light)">${items.length}</span>
+    </div>
+      <div class="detail-section" style="margin-bottom:14px${isCollapsed?';display:none':''}"><div style="padding:0">${itemsHtml}</div></div>`;
   }).join('');
   updateStorageCommitBar();
+}
+
+function toggleStorageCategory(loc){
+  if(S.storageCollapsed.has(loc)) S.storageCollapsed.delete(loc); else S.storageCollapsed.add(loc);
+  displayStorageList();
 }
 
 function toggleStorageSelect(id){
@@ -1731,11 +1741,63 @@ function storageModalHtml(item){
       <button class="add-link" style="margin-top:6px" onclick="openQuickAddMealInstance()">+ plan a new meal date</button>
     </div>
     <div class="field"><label>Notes</label><textarea id="st-notes" placeholder="Optional notes...">${esc(item?.notes||'')}</textarea></div>
-    ${item?.id?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;display:flex;gap:8px">
-      <button onclick="disposeStorageItem('${item.id}','used');closeModal()" style="flex:1;background:var(--green-light);border:1px solid rgba(74,103,65,0.3);color:var(--green);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✓ Mark as used</button>
-      <button onclick="disposeStorageItem('${item.id}','discarded');closeModal()" style="flex:1;background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown-light);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✕ Mark as discarded</button>
+    ${item?.id?`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;display:flex;flex-direction:column;gap:8px">
+      <button onclick="closeModal();openSplitStorageItem('${item.id}')" style="background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">⤴ Split into two entries</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="disposeStorageItem('${item.id}','used');closeModal()" style="flex:1;background:var(--green-light);border:1px solid rgba(74,103,65,0.3);color:var(--green);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✓ Mark as used</button>
+        <button onclick="disposeStorageItem('${item.id}','discarded');closeModal()" style="flex:1;background:var(--cream2);border:1px solid var(--border-strong);color:var(--brown-light);border-radius:var(--radius-sm);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">✕ Mark as discarded</button>
+      </div>
     </div>`:''}`;
 
+}
+
+function openSplitStorageItem(id){
+  const item=S.storageItems.find(x=>x.id===id);
+  if(!item) return;
+  const locOptions=S.storageLocations.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  openModal(`
+    <div class="modal-header"><div class="modal-title">Split item</div><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:16px"><label>Ingredient</label><div style="font-size:15px;padding:4px 0">${esc(item.ingredient_master?.name||'?')}</div></div>
+      <div class="section-label" style="margin:0 0 8px">Stays in ${esc(item.storage_locations?.name||'current location')}</div>
+      <div class="field"><label>Remaining quantity</label><input id="split-remain-qty" value="${esc(item.quantity||'')}" placeholder="e.g. 2 filets"></div>
+      <hr class="divider">
+      <div class="section-label" style="margin:0 0 8px">New entry</div>
+      <div class="row2">
+        <div class="field"><label>Quantity moving</label><input id="split-move-qty" placeholder="e.g. 3 filets"></div>
+        <div class="field"><label>New location</label><select id="split-move-loc"><option value="">— select —</option>${locOptions}</select></div>
+      </div>
+      <p style="font-size:12px;color:var(--brown-light);margin-top:2px">The new entry copies this item's dates and notes — edit it afterward if it needs its own.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSplitStorageItem('${id}')">Split</button>
+    </div>`);
+}
+
+async function saveSplitStorageItem(id){
+  const item=S.storageItems.find(x=>x.id===id);
+  if(!item) return;
+  const remainQty=document.getElementById('split-remain-qty').value.trim();
+  const moveQty=document.getElementById('split-move-qty').value.trim();
+  const moveLocId=document.getElementById('split-move-loc').value;
+  if(!moveQty||!moveLocId){ toast('Enter a quantity and location for the new entry'); return; }
+  const moveLocName=(S.storageLocations.find(l=>String(l.id)===String(moveLocId))?.name||'').toLowerCase();
+  const newPayload={
+    ingredient_id:item.ingredient_master?.id,
+    quantity:moveQty,
+    location_id:moveLocId,
+    purchase_date:item.purchase_date||null,
+    expiration_date:item.expiration_date||null,
+    date_frozen:moveLocName==='freezer'?(item.date_frozen||null):null,
+    notes:item.notes||null
+  };
+  try{
+    await db.post('food_storage',newPayload);
+    await db.patch(`food_storage?id=eq.${id}`,{quantity:remainQty||null});
+    closeModal(); toast('Item split into two entries');
+    renderStorageList();
+  }catch(e){ toast('Error splitting: '+e.message); }
 }
 
 function handleStorageIngSearch(val){
