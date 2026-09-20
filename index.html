@@ -571,16 +571,7 @@ function renderReferenceTab(){
     <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Meal instances (meal_instances table) — plan a meal for a specific date. Planned date pills shown on meal list and detail. Storage items can be linked to a meal instance (reassigns meal_instance_id). Storage detail shows age since purchase, age frozen (date_frozen field), and linked meal pill. UTC timezone bug fixed across all date fields using fmtDate() and localToday() helpers.</span></div>
     <div class="ref-version-row"><span class="ref-version-date">August 2026</span><span class="ref-version-desc">Tab restructure — Storage | Meals | Recipes | Other (Draft Recipes, Cross-ref, Sidebars) | Admin (Tags, Ingredients) | Reference. Sidebar invalid date bug fixed. Meal detail shows storage items linked to upcoming instance with add/remove capability and ⚠ indicator for items already linked to another meal.</span></div>
     <div class="ref-version-row"><span class="ref-version-date">September 2026</span><span class="ref-version-desc">Storage item edit — explicit ✕ clear buttons on date fields (fixes iOS Reset button not clearing saved dates). Recipe scaling extended to 20x (added 15x, 20x). Storage item assignment in meal detail upgraded from plain dropdown to keyword search + location filter. "prepared" added as ingredient type.</span></div>
-  </div>
-
-  <h2>Feature Backlog</h2>
-  <div class="ref-backlog">
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Clicking a tag on recipe detail navigates to Tag Search filtered to that tag</div>
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-ux">UX</span>Manual unit override for scaled recipes — user picks display unit manually</div>
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Equipment field — needs schema design (equipment_master ref table + junction, not free text)</div>
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-feature">Feature</span>Food storage "What can I make?" — cross-reference inventory against recipes. Design TBD.</div>
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Data</span>General-purpose bulk recipe template loader</div>
-    <div class="ref-backlog-item"><span class="ref-tag ref-tag-data">Security</span>Supabase RLS — lower priority now that passphrase auth is in place</div>
+    <div class="ref-version-row"><span class="ref-version-date">September 2026</span><span class="ref-version-desc">Storage tab: replaced one-tap Used/Discard with checkbox multi-select + a commit bar (batch-applies disposition, avoids accidental taps). Category headers collapse/expand with item counts. New Split action on a storage item creates an independent second entry with its own quantity and location (e.g. move part of a freezer item to the fridge), copying dates/notes as a starting point.</span></div>
   </div>
 </div>`;
 }
